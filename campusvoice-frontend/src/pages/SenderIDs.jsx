@@ -50,15 +50,15 @@ export default function SenderIDs() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Sender IDs</h1>
-          <p className="text-sm text-text-muted mt-1">Manage your campaign sender identities</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-primary">Sender IDs</h1>
+          <p className="text-sm font-medium text-text-muted mt-1">Manage your campaign sender identities</p>
         </div>
         <Button icon={PlusCircle} onClick={() => setShowForm(!showForm)}>New Sender ID</Button>
       </div>
 
       {showForm && (
         <div className="card p-5 space-y-4">
-          <p className="text-sm font-medium text-text-primary">Submit a new Sender ID</p>
+          <p className="text-sm font-bold text-text-primary">Submit a new Sender ID</p>
           <div className="flex gap-3">
             <Input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={11} placeholder="e.g. KWAME4SRC (max 11 chars)" className="flex-1" />
             <Button onClick={handleCreate}>Submit</Button>
@@ -84,7 +84,7 @@ export default function SenderIDs() {
                     <StatusIcon weight="duotone" size={20} />
                   </div>
                   <div>
-                    <p className="font-semibold text-text-primary">{s.sender_name}</p>
+                    <p className="font-bold text-text-primary">{s.sender_name}</p>
                     <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sc}`}>{s.status}</span>
                       <span>Submitted {formatDate(s.created_at)}</span>

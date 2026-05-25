@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../api/auth';
 import useAuthStore from '../store/authStore';
-import { ChatDots, Envelope, Lock, SignIn, Eye, EyeSlash } from '@phosphor-icons/react';
+import { Megaphone, Envelope, Lock, SignIn, Eye, EyeSlash } from '@phosphor-icons/react';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import toast from 'react-hot-toast';
@@ -31,16 +31,18 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-      <div className="card p-6 lg:p-8 w-full max-w-md space-y-6">
+      <div className="card p-8 sm:p-10 w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <ChatDots weight="duotone" size={28} className="text-primary" />
-            <span className="font-bold text-xl text-text-primary">CampusVoice</span>
+          <div className="flex items-center justify-center gap-2.5 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Megaphone weight="duotone" size={22} className="text-primary" />
+            </div>
           </div>
-          <p className="text-sm text-text-muted">Sign in to your campaign dashboard</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">Welcome back</h1>
+          <p className="text-sm font-medium text-text-muted mt-1">Sign in to your campaign dashboard</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <Input label="Email" icon={Envelope} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@university.edu" />
           <div className="relative">
             <Input label="Password" icon={Lock} type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Enter your password" />
@@ -51,8 +53,8 @@ export default function Login() {
           <Button type="submit" icon={SignIn} loading={loading} className="w-full">{loading ? 'Signing in...' : 'Sign In'}</Button>
         </form>
 
-        <p className="text-center text-xs text-text-muted">
-          Don't have an account? <Link to="/register" className="text-primary font-medium hover:underline">Register</Link>
+        <p className="text-center text-sm text-text-muted">
+          Don't have an account? <Link to="/register" className="text-primary font-bold hover:underline">Register</Link>
         </p>
       </div>
     </div>

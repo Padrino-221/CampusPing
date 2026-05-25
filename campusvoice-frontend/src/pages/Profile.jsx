@@ -70,8 +70,8 @@ export default function Profile() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Profile</h1>
-          <p className="text-sm text-text-muted mt-1">Your account details</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-primary">Profile</h1>
+          <p className="text-sm font-medium text-text-muted mt-1">Your account details</p>
         </div>
         {!editing && (
           <Button variant="outline" icon={PencilSimple} onClick={() => setEditing(true)}>Edit Profile</Button>
@@ -97,8 +97,8 @@ export default function Profile() {
                 <Icon weight="duotone" size={18} className="text-text-muted" />
               </div>
               <div>
-                <p className="text-xs text-text-muted">{label}</p>
-                <p className="text-sm font-medium text-text-primary">{value}</p>
+                <p className="text-xs font-semibold text-text-muted">{label}</p>
+                <p className="text-sm font-bold text-text-primary">{value}</p>
               </div>
             </div>
           ))}

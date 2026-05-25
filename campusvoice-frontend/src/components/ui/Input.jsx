@@ -7,12 +7,12 @@ export default function Input({ label, icon: Icon, type = 'text', error, classNa
   const isTextarea = type === 'textarea';
   const inputType = isPassword ? (show ? 'text' : 'password') : type;
 
-  const inputClass = `w-full ${Icon ? 'pl-10' : 'pl-4'} ${isPassword ? 'pr-10' : 'pr-4'} py-2.5 border ${error ? 'border-coral' : 'border-gray-200'} rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors`;
-  const textareaClass = `w-full border ${error ? 'border-coral' : 'border-gray-200'} rounded-2xl p-4 h-36 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`;
+  const inputClass = `w-full ${Icon ? 'pl-10' : 'pl-4'} ${isPassword ? 'pr-10' : 'pr-4'} py-2.5 border ${error ? 'border-coral' : 'border-gray-200'} rounded-xl text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-text-muted/50`;
+  const textareaClass = `w-full border ${error ? 'border-coral' : 'border-gray-200'} rounded-2xl p-4 h-36 resize-none text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-text-muted/50`;
 
   return (
     <div className={className}>
-      {label && <label className="text-xs font-medium text-text-muted block mb-1.5">{label}</label>}
+      {label && <label className="text-xs font-bold text-text-muted block mb-1.5 uppercase tracking-wide">{label}</label>}
       <div className="relative">
         {Icon && !isTextarea && <Icon weight="duotone" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />}
         {isTextarea ? (

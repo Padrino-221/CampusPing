@@ -69,8 +69,8 @@ export default function Credits() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">Billing & Top-up</h1>
-        <p className="text-sm text-text-muted mt-1">Manage your SMS credits</p>
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-primary">Billing & Top-up</h1>
+        <p className="text-sm font-medium text-text-muted mt-1">Manage your SMS credits</p>
       </div>
 
       {verifying && (
@@ -86,22 +86,22 @@ export default function Credits() {
             <Coins weight="duotone" size={28} className="text-gold" />
           </div>
           <div>
-            <p className="text-xs text-text-muted">Current Balance</p>
-            <p className="text-3xl font-bold text-text-primary">{formatNumber(balance)}</p>
-            <p className="text-xs text-text-muted">SMS Credits</p>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Current Balance</p>
+            <p className="text-3xl font-extrabold text-text-primary">{formatNumber(balance)}</p>
+            <p className="text-xs font-medium text-text-muted">SMS Credits</p>
           </div>
         </div>
       </div>
 
       <div>
-        <h3 className="font-semibold text-text-primary mb-4">Credit Packages</h3>
+        <h3 className="text-base font-bold text-text-primary mb-4">Credit Packages</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {packages.map((pkg) => (
             <div key={pkg.id} className="card p-5 flex flex-col">
-              <h4 className="font-bold text-lg text-text-primary">{pkg.name}</h4>
-              <p className="text-2xl font-bold text-primary mt-2">{formatNumber(pkg.credits)}</p>
-              <p className="text-sm text-text-muted mb-1">credits</p>
-              <p className="text-lg font-semibold text-text-primary mb-4">{formatCurrency(pkg.price_ghs)}</p>
+              <h4 className="font-extrabold text-lg text-text-primary">{pkg.name}</h4>
+              <p className="text-2xl font-extrabold text-primary mt-2">{formatNumber(pkg.credits)}</p>
+              <p className="text-sm font-medium text-text-muted mb-1">credits</p>
+              <p className="text-lg font-bold text-text-primary mb-4">{formatCurrency(pkg.price_ghs)}</p>
               <Button
                 onClick={() => handlePurchase(pkg)}
                 loading={purchasing === pkg.id}
@@ -116,7 +116,7 @@ export default function Credits() {
       </div>
 
       <div className="card p-6">
-        <h3 className="font-semibold text-text-primary mb-4">Transaction History</h3>
+        <h3 className="text-base font-bold text-text-primary mb-4">Transaction History</h3>
         <div className="space-y-3">
           {transactions.length === 0 ? (
             <p className="text-sm text-text-muted text-center py-4">No transactions yet</p>

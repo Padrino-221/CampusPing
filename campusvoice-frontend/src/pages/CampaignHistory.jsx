@@ -59,7 +59,7 @@ export default function CampaignHistory() {
           <tbody>
             {filtered.map((c) => (
               <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                <td className="p-4 font-medium text-text-primary">{c.title || 'Untitled'}</td>
+                <td className="p-4 font-bold text-text-primary">{c.title || 'Untitled'}</td>
                 <td className="p-4 text-text-muted">{formatNumber(c.recipient_count)}</td>
                 <td className="p-4 text-text-muted">{formatNumber(c.credits_used)}</td>
                 <td className="p-4"><Badge variant={statusVariant[c.status] || 'default'}>{c.status}</Badge></td>

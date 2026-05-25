@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api/auth';
 import api from '../api/axios';
-import { ChatDots, User, Envelope, Lock, Phone, Briefcase, Building } from '@phosphor-icons/react';
+import { Megaphone, User, Envelope, Lock, Phone, Briefcase, Building } from '@phosphor-icons/react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -42,13 +42,15 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-      <div className="card p-6 lg:p-8 w-full max-w-md space-y-6">
+      <div className="card p-8 sm:p-10 w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <ChatDots weight="duotone" size={28} className="text-primary" />
-            <span className="font-bold text-xl text-text-primary">CampusVoice</span>
+          <div className="flex items-center justify-center gap-2.5 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Megaphone weight="duotone" size={22} className="text-primary" />
+            </div>
           </div>
-          <p className="text-sm text-text-muted">Create your campaign account</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">Create your account</h1>
+          <p className="text-sm font-medium text-text-muted mt-1">Start your campaign journey</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,8 +65,8 @@ export default function Register() {
           <Button type="submit" loading={loading} className="w-full">{loading ? 'Creating account...' : 'Create Account'}</Button>
         </form>
 
-        <p className="text-center text-xs text-text-muted">
-          Already registered? <Link to="/login" className="text-primary font-medium hover:underline">Sign In</Link>
+        <p className="text-center text-sm text-text-muted">
+          Already registered? <Link to="/login" className="text-primary font-bold hover:underline">Sign In</Link>
         </p>
       </div>
     </div>

@@ -1,31 +1,60 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', 'Plus Jakarta Sans', 'Poppins', system-ui, sans-serif;
-  --color-primary: #0066FF;
-  --color-primary-dark: #1A73E8;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --color-primary: #4F6EF7;
+  --color-primary-dark: #3B5BDB;
   --color-purple: #A855F7;
   --color-gold: #FACC15;
   --color-coral: #EF4444;
-  --color-surface: #FAFAFC;
+  --color-surface: #F5F6FA;
   --color-card: #FFFFFF;
-  --color-text-primary: #1A1D20;
+  --color-text-primary: #1E2432;
   --color-text-muted: #8A94A6;
+  --color-accent-blue: #E8EDFF;
+  --color-accent-orange: #FFF3E0;
+  --color-accent-yellow: #FFF9E0;
+  --color-accent-pink: #FFE8E8;
+  --color-accent-green: #E6F9F0;
+  --color-accent-purple: #F3E8FF;
+  --color-sidebar: #FFFFFF;
 }
 
 body {
   background-color: var(--color-surface);
   font-family: var(--font-sans);
   color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .card {
   background: #FFFFFF;
   border-radius: 20px;
-  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .card:hover {
-  box-shadow: 0px 15px 40px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* Colorful stat card variants */
+.stat-card-blue {
+  background: linear-gradient(135deg, #E8EDFF 0%, #D6DEFF 100%);
+}
+.stat-card-orange {
+  background: linear-gradient(135deg, #FFF3E0 0%, #FFE4C4 100%);
+}
+.stat-card-yellow {
+  background: linear-gradient(135deg, #FFF9E0 0%, #FFF0B3 100%);
+}
+.stat-card-pink {
+  background: linear-gradient(135deg, #FFE8E8 0%, #FFD4D4 100%);
+}
+.stat-card-green {
+  background: linear-gradient(135deg, #E6F9F0 0%, #C3F0DA 100%);
+}
+.stat-card-purple {
+  background: linear-gradient(135deg, #F3E8FF 0%, #E5D1FF 100%);
 }

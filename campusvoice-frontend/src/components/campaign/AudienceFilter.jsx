@@ -48,13 +48,13 @@ export default function AudienceFilter({ institutionId, onFilterChange }) {
     <div className="space-y-5">
       <div className="flex items-center gap-2">
         <Funnel weight="duotone" size={18} className="text-primary" />
-        <h3 className="font-semibold text-text-primary">Target Audience</h3>
+        <h3 className="font-bold text-text-primary">Target Audience</h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filterGroups.map(({ key, label, options: opts }) => (
           <div key={key}>
-            <p className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wide">{label}</p>
+            <p className="text-xs font-bold text-text-muted mb-2 uppercase tracking-wide">{label}</p>
             <div className="flex flex-wrap gap-2">
               {opts.map((opt) => {
                 const active = filters[key].includes(opt);
@@ -62,8 +62,8 @@ export default function AudienceFilter({ institutionId, onFilterChange }) {
                   <button
                     key={opt}
                     onClick={() => toggle(key, opt)}
-                    className={`cursor-pointer px-3 py-1.5 text-xs rounded-xl border transition-all ${
-                      active ? 'bg-primary text-white border-primary' : 'bg-white text-text-muted border-gray-200 hover:border-primary'
+                    className={`cursor-pointer px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
+                      active ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20' : 'bg-white text-text-muted border-gray-200 hover:border-primary'
                     }`}
                   >
                     {opt}
@@ -75,11 +75,11 @@ export default function AudienceFilter({ institutionId, onFilterChange }) {
         ))}
       </div>
 
-      <div className="bg-blue-50 rounded-2xl p-5 text-center">
+      <div className="stat-card-blue rounded-2xl p-5 text-center">
         <Users weight="duotone" size={24} className="mx-auto text-primary mb-2" />
-        <p className="text-xs text-text-muted">Estimated Audience</p>
-        <p className="text-4xl font-bold text-primary">{counting ? '...' : formatNumber(audienceCount)}</p>
-        <p className="text-xs text-text-muted mt-1">students match your filters</p>
+        <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Estimated Audience</p>
+        <p className="text-4xl font-extrabold text-primary">{counting ? '...' : formatNumber(audienceCount)}</p>
+        <p className="text-xs font-medium text-text-muted mt-1">students match your filters</p>
       </div>
     </div>
   );

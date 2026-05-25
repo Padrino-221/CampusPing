@@ -18,7 +18,7 @@ export default function Select({ label, icon: Icon, options, placeholder, error,
 
   return (
     <div className={className} ref={ref}>
-      {label && <label className="text-xs font-medium text-text-muted block mb-1.5">{label}</label>}
+      {label && <label className="text-xs font-bold text-text-muted block mb-1.5 uppercase tracking-wide">{label}</label>}
       <div className="relative">
         {Icon && <Icon weight="duotone" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" />}
         <button

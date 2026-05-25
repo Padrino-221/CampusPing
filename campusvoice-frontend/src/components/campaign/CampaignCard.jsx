@@ -3,11 +3,11 @@ import { PaperPlane, CheckCircle, XCircle, Clock, ArrowRight } from '@phosphor-i
 import { formatRelative } from '../../utils/formatters';
 
 const statusConfig = {
-  draft: { icon: Clock, color: 'text-gray-400', bg: 'bg-gray-100' },
-  queued: { icon: Clock, color: 'text-gold', bg: 'bg-gold/10' },
-  sending: { icon: PaperPlane, color: 'text-primary', bg: 'bg-blue-50' },
-  completed: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50' },
-  failed: { icon: XCircle, color: 'text-coral', bg: 'bg-red-50' },
+  draft: { icon: Clock, color: 'text-gray-500', bg: 'bg-gray-100' },
+  queued: { icon: Clock, color: 'text-amber-500', bg: 'stat-card-orange' },
+  sending: { icon: PaperPlane, color: 'text-primary', bg: 'stat-card-blue' },
+  completed: { icon: CheckCircle, color: 'text-emerald-500', bg: 'stat-card-green' },
+  failed: { icon: XCircle, color: 'text-rose-500', bg: 'stat-card-pink' },
 };
 
 export default function CampaignCard({ campaign }) {
@@ -16,14 +16,14 @@ export default function CampaignCard({ campaign }) {
   const Icon = cfg.icon;
 
   return (
-    <div className="card p-5 flex items-center justify-between">
+    <div className="flex items-center justify-between p-4 rounded-2xl bg-surface/50 hover:bg-surface transition-colors">
       <div className="flex items-start gap-4">
         <div className={`p-3 rounded-xl ${cfg.bg}`}>
           <Icon weight="duotone" size={20} className={cfg.color} />
         </div>
         <div>
-          <h4 className="font-semibold text-text-primary">{campaign.title || 'Untitled Campaign'}</h4>
-          <div className="flex items-center gap-3 mt-1 text-xs text-text-muted">
+          <h4 className="text-sm font-bold text-text-primary">{campaign.title || 'Untitled Campaign'}</h4>
+          <div className="flex items-center gap-3 mt-1 text-xs font-medium text-text-muted">
             <span>{campaign.recipient_count?.toLocaleString()} recipients</span>
             <span>{campaign.credits_used} credits</span>
             <span>{formatRelative(campaign.created_at)}</span>
@@ -32,9 +32,9 @@ export default function CampaignCard({ campaign }) {
       </div>
       <button
         onClick={() => navigate(`/campaigns/${campaign.id}`)}
-        className="flex items-center gap-1 text-sm text-primary hover:text-blue-700 font-medium cursor-pointer"
+        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-dark font-bold cursor-pointer"
       >
-        View <ArrowRight weight="duotone" size={14} />
+        View <ArrowRight weight="bold" size={12} />
       </button>
     </div>
   );
