@@ -12,6 +12,7 @@ from app.models.institution import Institution
 from app.models.candidate import Candidate
 from app.utils.security import hash_password
 from app.routers import auth, campaigns, credits, sender_ids, students, institutions, admin
+from app.middleware.csrf import CSRFMiddleware
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -33,6 +34,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# CSRF protection — verify X-Requested-With header on state-changing requests
+app.add_middleware(CSRFMiddleware)
 
 # Register Routers
 app.include_router(auth.router)
