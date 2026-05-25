@@ -22,6 +22,7 @@ import AdminCandidates from './pages/admin/Candidates';
 import AdminRevenue from './pages/admin/Revenue';
 import AdminInstitutions from './pages/admin/Institutions';
 import AdminCreditPackages from './pages/admin/CreditPackages';
+import AdminCampaigns from './pages/admin/Campaigns';
 
 function AppLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,6 +36,13 @@ function AppLayout({ children }) {
       </div>
     </div>
   );
+}
+
+function CandidateOnly({ children }) {
+  const { candidate } = useAuthStore();
+  const isAdmin = candidate?.email === 'admin@campusvoice.com';
+  if (isAdmin) return <Navigate to="/dashboard" replace />;
+  return children;
 }
 
 export default function App() {
@@ -55,27 +63,27 @@ export default function App() {
         />
         <Route
           path="/campaigns/new"
-          element={<ProtectedRoute><AppLayout><NewCampaign /></AppLayout></ProtectedRoute>}
+          element={<ProtectedRoute><AppLayout><CandidateOnly><NewCampaign /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
         <Route
           path="/campaigns"
-          element={<ProtectedRoute><AppLayout><CampaignHistory /></AppLayout></ProtectedRoute>}
+          element={<ProtectedRoute><AppLayout><CandidateOnly><CampaignHistory /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
         <Route
           path="/campaigns/:id"
-          element={<ProtectedRoute><AppLayout><CampaignDetail /></AppLayout></ProtectedRoute>}
+          element={<ProtectedRoute><AppLayout><CandidateOnly><CampaignDetail /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
         <Route
           path="/sender-ids"
-          element={<ProtectedRoute><AppLayout><SenderIDs /></AppLayout></ProtectedRoute>}
+          element={<ProtectedRoute><AppLayout><CandidateOnly><SenderIDs /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
         <Route
           path="/audience"
-          element={<ProtectedRoute><AppLayout><Audience /></AppLayout></ProtectedRoute>}
+          element={<ProtectedRoute><AppLayout><CandidateOnly><Audience /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
         <Route
           path="/credits"
-          element={<ProtectedRoute><AppLayout><Credits /></AppLayout></ProtectedRoute>}
+          element={<ProtectedRoute><AppLayout><CandidateOnly><Credits /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
         <Route
           path="/profile"
@@ -86,6 +94,7 @@ export default function App() {
           <Route path="students" element={<AdminStudents />} />
           <Route path="sender-ids" element={<AdminSenderIDs />} />
           <Route path="candidates" element={<AdminCandidates />} />
+          <Route path="campaigns" element={<AdminCampaigns />} />
           <Route path="revenue" element={<AdminRevenue />} />
           <Route path="institutions" element={<AdminInstitutions />} />
           <Route path="credit-packages" element={<AdminCreditPackages />} />
