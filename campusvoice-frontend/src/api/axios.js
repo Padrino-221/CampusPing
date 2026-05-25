@@ -22,7 +22,10 @@ api.interceptors.response.use(
   async (err) => {
     const originalRequest = err.config;
 
-    if (err.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/api/auth/refresh') && !originalRequest.url.includes('/api/auth/login')) {
+    const skipUrls = ['/api/auth/refresh', '/api/auth/login', '/api/auth/me'];
+    const shouldSkip = skipUrls.some((u) => originalRequest.url.includes(u));
+
+    if (err.response?.status === 401 && !originalRequest._retry && !shouldSkip) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -38,7 +41,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
-        window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
