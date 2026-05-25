@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../api/auth';
+import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import { ChatDots, Envelope, Lock, SignIn, Eye, EyeSlash } from '@phosphor-icons/react';
 import Input from '../components/ui/Input';
+import Select from '../components/ui/Select';
+import { Building } from '@phosphor-icons/react';
 import Button from '../components/ui/Button';
+import GoogleSignInButton from '../components/ui/GoogleSignInButton';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -12,8 +16,15 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [institutions, setInstitutions] = useState([]);
+  const [institutionId, setInstitutionId] = useState('');
+  const [showInstitution, setShowInstitution] = useState(false);
   const { setCandidate } = useAuthStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    api.get('/api/institutions').then(({ data }) => setInstitutions(data)).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,6 +49,21 @@ export default function Login() {
             <span className="font-bold text-xl text-text-primary">CampusVoice</span>
           </div>
           <p className="text-sm text-text-muted">Sign in to your campaign dashboard</p>
+        </div>
+
+        <div className="space-y-4">
+          {showInstitution && (
+            <Select label="Institution (for new Google accounts)" icon={Building} value={institutionId} onChange={(e) => setInstitutionId(e.target.value)} placeholder="Select institution" options={institutions.map((i) => ({ value: i.id, label: i.name }))} />
+          )}
+          <GoogleSignInButton
+            institutionId={institutionId || institutions[0]?.id || ''}
+            onNeedInstitution={() => { setShowInstitution(true); toast.error('Please select your institution first'); }}
+          />
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+          <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-text-muted">or sign in with email</span></div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
