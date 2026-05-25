@@ -22,8 +22,16 @@ from app.utils.security import (
     decode_token
 )
 from app.middleware.auth import get_current_candidate
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+
+class GoogleTokenRequest(BaseModel):
+    token: str
+    institution_id: str
 
 @router.post("/register", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
 async def register(
@@ -79,7 +87,7 @@ async def login(
     result = await db.execute(stmt)
     candidate = result.scalar_one_or_none()
     
-    if not candidate or not verify_password(schema.password, candidate.hashed_password):
+    if not candidate or not candidate.hashed_password or not verify_password(schema.password, candidate.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email credentials or password"
@@ -205,3 +213,114 @@ async def refresh(
     )
     
     return {"message": "Session token refreshed successfully"}
+
+
+@router.post("/google", response_model=TokenResponse)
+async def google_auth(
+    body: GoogleTokenRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    """Authenticate or register a user via Google ID token."""
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google authentication is not configured"
+        )
+
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            body.token,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token"
+        )
+
+    google_id = idinfo["sub"]
+    email = idinfo.get("email", "")
+    name = idinfo.get("name", "")
+    picture = idinfo.get("picture")
+
+    # Look up by google_id first, then by email
+    stmt = select(Candidate).where(Candidate.google_id == google_id)
+    result = await db.execute(stmt)
+    candidate = result.scalar_one_or_none()
+
+    if not candidate:
+        # Check if an account with this email exists (link it)
+        stmt = select(Candidate).where(Candidate.email == email)
+        result = await db.execute(stmt)
+        candidate = result.scalar_one_or_none()
+
+        if candidate:
+            candidate.google_id = google_id
+            if picture and not candidate.profile_photo:
+                candidate.profile_photo = picture
+            await db.commit()
+            await db.refresh(candidate)
+        else:
+            # Validate institution
+            inst_stmt = select(Institution).where(Institution.id == body.institution_id)
+            inst_result = await db.execute(inst_stmt)
+            if not inst_result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Please select a valid institution"
+                )
+
+            candidate = Candidate(
+                institution_id=body.institution_id,
+                full_name=name,
+                email=email,
+                google_id=google_id,
+                profile_photo=picture,
+                credits_balance=0,
+                is_active=True,
+                is_verified=True,
+            )
+            db.add(candidate)
+            await db.commit()
+            await db.refresh(candidate)
+
+    if not candidate.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been deactivated"
+        )
+
+    # Generate tokens and set cookies
+    access_token = create_access_token(subject=candidate.id)
+    refresh_token = create_refresh_token(subject=candidate.id)
+
+    is_prod = settings.ENVIRONMENT == "production"
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        expires=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=is_prod,
+        samesite="strict",
+        path="/"
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        expires=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        secure=is_prod,
+        samesite="strict",
+        path="/"
+    )
+
+    return {
+        "message": "Google authentication successful",
+        "candidate": candidate
+    }

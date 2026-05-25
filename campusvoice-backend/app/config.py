@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
     # Default Super Admin setup
     ADMIN_EMAIL: str = "admin@campusvoice.com"
     ADMIN_PASSWORD: str = "adminpassword123"

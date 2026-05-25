@@ -6,6 +6,7 @@ import { ChatDots, User, Envelope, Lock, Phone, Briefcase, Building } from '@pho
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
+import GoogleSignInButton from '../components/ui/GoogleSignInButton';
 import toast from 'react-hot-toast';
 
 export default function Register() {
@@ -51,12 +52,23 @@ export default function Register() {
           <p className="text-sm text-text-muted">Create your campaign account</p>
         </div>
 
+        <div className="space-y-4">
+          <Select label="Institution" icon={Building} value={form.institution_id} onChange={update('institution_id')} required placeholder="Select institution" options={institutions.map((i) => ({ value: i.id, label: i.name }))} />
+          <GoogleSignInButton
+            institutionId={form.institution_id}
+            onNeedInstitution={() => toast.error('Please select your institution first')}
+          />
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+          <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-text-muted">or register with email</span></div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {fields.map(({ key, label, icon: Icon, type, placeholder }) => (
             <Input key={key} label={label} icon={Icon} type={type} value={form[key]} onChange={update(key)} required placeholder={placeholder} />
           ))}
-
-          <Select label="Institution" icon={Building} value={form.institution_id} onChange={update('institution_id')} required placeholder="Select institution" options={institutions.map((i) => ({ value: i.id, label: i.name }))} />
 
           <Input label="Password" icon={Lock} type="password" value={form.password} onChange={update('password')} required minLength={6} placeholder="Min. 6 characters" />
 
