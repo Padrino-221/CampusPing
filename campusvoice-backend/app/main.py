@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import AsyncSessionLocal
@@ -8,6 +12,10 @@ from app.models.institution import Institution
 from app.models.candidate import Candidate
 from app.utils.security import hash_password
 from app.routers import auth, campaigns, credits, sender_ids, students, institutions, admin
+from app.middleware.csrf import CSRFMiddleware
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -15,8 +23,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS Configuration
-# Since we use HTTPOnly cookies, allow_credentials=True and specific origins are required.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],
@@ -24,6 +34,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# CSRF protection — verify X-Requested-With header on state-changing requests
+app.add_middleware(CSRFMiddleware)
 
 # Register Routers
 app.include_router(auth.router)
@@ -92,9 +105,10 @@ async def seed_data():
                     phone="0240000000",
                     position="Super Administrator",
                     hashed_password=hash_password(settings.ADMIN_PASSWORD),
-                    credits_balance=10000, # Large balance for admin testing
+                    credits_balance=10000,
                     is_active=True,
-                    is_verified=True
+                    is_verified=True,
+                    is_admin=True,
                 )
                 session.add(admin_candidate)
                 await session.commit()

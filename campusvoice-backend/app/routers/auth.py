@@ -22,11 +22,16 @@ from app.utils.security import (
     decode_token
 )
 from app.middleware.auth import get_current_candidate
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     schema: CandidateCreate,
     db: AsyncSession = Depends(get_db)
 ):
@@ -48,6 +53,13 @@ async def register(
             detail="The specified institution does not exist"
         )
     
+    # Block registration with reserved admin email
+    if schema.email.lower() == settings.ADMIN_EMAIL.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email address is reserved"
+        )
+
     # Create candidate
     new_candidate = Candidate(
         institution_id=schema.institution_id,
@@ -58,8 +70,7 @@ async def register(
         hashed_password=hash_password(schema.password),
         credits_balance=0,
         is_active=True,
-        # Auto-verify the default super admin email to make onboarding simpler
-        is_verified=True if schema.email == settings.ADMIN_EMAIL else False
+        is_verified=False,
     )
     
     db.add(new_candidate)
@@ -69,7 +80,9 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     schema: CandidateLogin,
     response: Response,
     db: AsyncSession = Depends(get_db)
@@ -159,6 +172,7 @@ async def update_me(
 
 
 @router.post("/refresh")
+@limiter.limit("20/minute")
 async def refresh(
     request: Request,
     response: Response,

@@ -13,7 +13,7 @@ const adminNav = [
 
 export default function AdminLayout() {
   const { candidate } = useAuthStore();
-  const isAdmin = candidate?.email === 'admin@campusvoice.com';
+  const isAdmin = candidate?.is_admin === true;
 
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 

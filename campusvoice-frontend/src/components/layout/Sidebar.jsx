@@ -14,7 +14,7 @@ const navItems = [
 export default function Sidebar({ open, onClose }) {
   const { candidate } = useAuthStore();
   const { pathname } = useLocation();
-  const isAdmin = candidate?.email === 'admin@campusvoice.com';
+  const isAdmin = candidate?.is_admin === true;
   const isAdminRoute = pathname.startsWith('/admin');
 
   const handleNav = () => { if (onClose) onClose(); };
