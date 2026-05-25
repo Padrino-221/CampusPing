@@ -8,7 +8,7 @@ export default function Table({ columns, data, loading = false, emptyMessage = '
         <thead>
           <tr className="bg-gray-50/50">
             {columns.map((col) => (
-              <th key={col.key} className={`text-left p-4 text-xs font-medium text-text-muted uppercase tracking-wider ${col.align === 'right' ? 'text-right' : ''}`}>
+              <th key={col.key} className={`text-left p-4 text-[11px] font-bold text-text-muted uppercase tracking-wider ${col.align === 'right' ? 'text-right' : ''}`}>
                 {col.label}
               </th>
             ))}

@@ -97,7 +97,7 @@ export default function CampaignDetail() {
       <div className="card p-6 space-y-5">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">{campaign.title || 'Untitled Campaign'}</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-primary">{campaign.title || 'Untitled Campaign'}</h1>
             <div className="flex items-center gap-3 mt-2 text-sm text-text-muted">
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[campaign.status] || badgeColors.draft}`}>
                 {campaign.status}
@@ -124,7 +124,7 @@ export default function CampaignDetail() {
 
         {editing && (
           <div className="bg-blue-50/50 rounded-2xl p-5 space-y-4">
-            <h3 className="font-semibold text-text-primary text-sm">Edit Campaign</h3>
+            <h3 className="font-bold text-text-primary text-sm">Edit Campaign</h3>
             <Input label="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Campaign title" />
             <div>
               <label className="block text-xs font-medium text-text-muted mb-1.5">Message</label>
@@ -152,7 +152,7 @@ export default function CampaignDetail() {
           ].map(({ label, value, icon: Icon, color, bg }) => (
             <div key={label} className={`${bg} rounded-2xl p-4 text-center`}>
               <Icon weight="duotone" size={20} className={`mx-auto mb-1 ${color}`} />
-              <p className="text-lg font-bold text-text-primary">{value}</p>
+              <p className="text-lg font-extrabold text-text-primary">{value}</p>
               <p className="text-xs text-text-muted">{label}</p>
             </div>
           ))}
@@ -162,7 +162,7 @@ export default function CampaignDetail() {
           <div>
             <div className="flex items-center justify-between text-sm mb-1">
               <span className="text-text-muted">Delivery Rate</span>
-              <span className="font-semibold text-green-500">{deliveredRate}%</span>
+              <span className="font-bold text-green-500">{deliveredRate}%</span>
             </div>
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${deliveredRate}%` }} />

@@ -89,17 +89,17 @@ export default function NewCampaign() {
 
         {step === 2 && (
           <div className="space-y-5">
-            <h3 className="font-semibold text-text-primary">Review Your Campaign</h3>
+            <h3 className="font-bold text-text-primary">Review Your Campaign</h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-blue-50 rounded-2xl p-4 text-center">
                 <p className="text-xs text-text-muted">Audience</p>
-                <p className="text-2xl font-bold text-primary">{formatNumber(audienceCount)}</p>
+                <p className="text-2xl font-extrabold text-primary">{formatNumber(audienceCount)}</p>
                 <p className="text-xs text-text-muted">recipients</p>
               </div>
               <div className="bg-purple-50 rounded-2xl p-4 text-center">
                 <p className="text-xs text-text-muted">SMS Units</p>
-                <p className="text-2xl font-bold text-purple">{smsUnits}</p>
+                <p className="text-2xl font-extrabold text-purple">{smsUnits}</p>
                 <p className="text-xs text-text-muted">per recipient</p>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function NewCampaign() {
             <div className={`rounded-2xl p-4 text-center ${hasEnough ? 'bg-green-50' : 'bg-red-50'}`}>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins weight="duotone" size={18} className={hasEnough ? 'text-green-500' : 'text-coral'} />
-                <span className={`text-lg font-bold ${hasEnough ? 'text-green-500' : 'text-coral'}`}>
+                <span className={`text-lg font-extrabold ${hasEnough ? 'text-green-500' : 'text-coral'}`}>
                   {formatNumber(creditsNeeded)} credits needed
                 </span>
               </div>

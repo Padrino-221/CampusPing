@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { SignOut, User, Coins, List } from '@phosphor-icons/react';
+import { SignOut, User, Coins, List, Shield, Bell } from '@phosphor-icons/react';
 import useAuthStore from '../../store/authStore';
 import { logout as logoutApi } from '../../api/auth';
 import { formatNumber } from '../../utils/formatters';
@@ -7,6 +7,7 @@ import { formatNumber } from '../../utils/formatters';
 export default function TopBar({ onToggleSidebar }) {
   const { candidate, logout } = useAuthStore();
   const navigate = useNavigate();
+  const isAdmin = candidate?.email === 'admin@campusvoice.com';
 
   const handleLogout = async () => {
     await logoutApi();
@@ -15,27 +16,39 @@ export default function TopBar({ onToggleSidebar }) {
   };
 
   return (
-    <header className="flex items-center justify-between px-4 lg:px-8 py-4 bg-white border-b border-gray-100">
+    <header className="flex items-center justify-between px-4 lg:px-8 h-16 bg-white/80 backdrop-blur-md border-b border-gray-100/60">
       <div className="flex items-center gap-3">
         <button onClick={onToggleSidebar} className="lg:hidden text-text-muted hover:text-text-primary cursor-pointer">
-          <List weight="duotone" size={22} />
+          <List weight="bold" size={20} />
         </button>
-        <p className="hidden sm:block text-sm text-text-muted">
+        <p className="hidden sm:block text-sm font-medium text-text-muted">
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
       </div>
-      <div className="flex items-center gap-3 lg:gap-6">
-        <div className="hidden sm:flex items-center gap-2 bg-gold/10 text-gold-800 px-3 lg:px-4 py-2 rounded-xl">
-          <Coins weight="duotone" size={16} className="text-gold" />
-          <span className="text-xs lg:text-sm font-semibold">{formatNumber(candidate?.credits_balance)}</span>
-        </div>
-        <div className="hidden md:flex items-center gap-2 text-sm text-text-muted">
-          <User weight="duotone" size={16} />
-          <span className="font-medium text-text-primary">{candidate?.full_name}</span>
-        </div>
-        <button onClick={handleLogout} className="flex items-center gap-1 text-sm text-text-muted hover:text-coral transition-colors cursor-pointer">
-          <SignOut weight="duotone" size={16} />
-          <span className="hidden sm:inline">Logout</span>
+      <div className="flex items-center gap-2 lg:gap-4">
+        {isAdmin ? (
+          <div className="hidden sm:flex items-center gap-2 bg-purple/8 px-3.5 py-1.5 rounded-full">
+            <Shield weight="duotone" size={14} className="text-purple" />
+            <span className="text-xs font-bold text-purple">Super Admin</span>
+          </div>
+        ) : (
+          <div className="hidden sm:flex items-center gap-2 bg-amber-50 px-3.5 py-1.5 rounded-full">
+            <Coins weight="duotone" size={14} className="text-amber-500" />
+            <span className="text-xs font-bold text-amber-700">{formatNumber(candidate?.credits_balance)} credits</span>
+          </div>
+        )}
+        <button
+          onClick={() => navigate('/profile')}
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded-full hover:bg-gray-50 transition-colors cursor-pointer"
+        >
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <User weight="duotone" size={16} className="text-primary" />
+          </div>
+          <span className="hidden md:block text-sm font-semibold text-text-primary">{candidate?.full_name?.split(' ')[0]}</span>
+        </button>
+        <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-muted hover:text-coral hover:bg-red-50 rounded-full transition-all cursor-pointer">
+          <SignOut weight="bold" size={16} />
+          <span className="hidden sm:inline text-xs font-semibold">Logout</span>
         </button>
       </div>
     </header>

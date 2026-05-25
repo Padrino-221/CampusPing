@@ -40,7 +40,7 @@ export default function Audience() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Users weight="duotone" size={24} className="text-primary" />
-        <h1 className="text-2xl font-bold text-text-primary">Student Directory</h1>
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-primary">Student Directory</h1>
       </div>
 
       <form onSubmit={handleSearch} className="flex items-center gap-3 max-w-md">

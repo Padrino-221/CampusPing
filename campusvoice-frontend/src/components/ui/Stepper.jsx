@@ -8,7 +8,7 @@ export default function Stepper({ steps, current }) {
           }`}>
             {i + 1}
           </div>
-          <span className={`text-sm font-medium ${i <= current ? 'text-text-primary' : 'text-text-muted'}`}>{label}</span>
+          <span className={`text-xs font-bold ${i <= current ? 'text-text-primary' : 'text-text-muted'}`}>{label}</span>
           {i < steps.length - 1 && <div className="w-8 h-px bg-gray-200" />}
         </div>
       ))}
