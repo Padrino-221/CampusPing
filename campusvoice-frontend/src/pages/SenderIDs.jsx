@@ -48,9 +48,9 @@ export default function SenderIDs() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Sender IDs</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Sender IDs</h1>
           <p className="text-sm text-text-muted mt-1">Manage your campaign sender identities</p>
         </div>
         <Button icon={PlusCircle} onClick={() => setShowForm(!showForm)}>New Sender ID</Button>
@@ -59,10 +59,12 @@ export default function SenderIDs() {
       {showForm && (
         <div className="card p-5 space-y-4">
           <p className="text-sm font-medium text-text-primary">Submit a new Sender ID</p>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={11} placeholder="e.g. KWAME4SRC (max 11 chars)" className="flex-1" />
-            <Button onClick={handleCreate}>Submit</Button>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            <div className="flex gap-3">
+              <Button onClick={handleCreate}>Submit</Button>
+              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            </div>
           </div>
         </div>
       )}

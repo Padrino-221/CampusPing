@@ -68,9 +68,9 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Profile</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Profile</h1>
           <p className="text-sm text-text-muted mt-1">Your account details</p>
         </div>
         {!editing && (
@@ -79,7 +79,7 @@ export default function Profile() {
       </div>
 
       {editing ? (
-        <div className="card p-6 space-y-5">
+        <div className="card p-4 sm:p-6 space-y-5">
           <Input label="Full Name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
           <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0241234567" />
           <Input label="Position" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="SRC President" />
@@ -90,7 +90,7 @@ export default function Profile() {
           </div>
         </div>
       ) : (
-        <div className="card p-6 space-y-5">
+        <div className="card p-4 sm:p-6 space-y-5">
           {fields.map(({ label, value, icon: Icon }) => (
             <div key={label} className="flex items-center gap-4">
               <div className="p-2.5 rounded-xl bg-gray-50">

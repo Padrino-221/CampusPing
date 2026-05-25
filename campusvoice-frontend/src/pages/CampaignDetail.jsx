@@ -94,10 +94,10 @@ export default function CampaignDetail() {
     <div className="max-w-3xl mx-auto space-y-6">
       <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/campaigns')}>Back to Campaigns</Button>
 
-      <div className="card p-6 space-y-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">{campaign.title || 'Untitled Campaign'}</h1>
+      <div className="card p-4 sm:p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate">{campaign.title || 'Untitled Campaign'}</h1>
             <div className="flex items-center gap-3 mt-2 text-sm text-text-muted">
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[campaign.status] || badgeColors.draft}`}>
                 {campaign.status}
@@ -105,7 +105,7 @@ export default function CampaignDetail() {
               <span>{formatDate(campaign.created_at)}</span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             {campaign.status === 'draft' && (
               <>
                 <button onClick={handleEdit} className="p-2 text-text-muted hover:text-primary rounded-xl hover:bg-blue-50 cursor-pointer">

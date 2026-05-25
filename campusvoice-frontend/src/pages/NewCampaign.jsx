@@ -70,7 +70,7 @@ export default function NewCampaign() {
 
       <Stepper steps={steps} current={step} />
 
-      <div className="card p-6 space-y-6">
+      <div className="card p-4 sm:p-6 space-y-6">
         {step === 0 && (
           <AudienceFilter
             institutionId={candidate?.institution_id}
@@ -126,7 +126,7 @@ export default function NewCampaign() {
 
             <Input label="Schedule (optional)" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               {!hasEnough && (
                 <Button variant="outline" onClick={() => navigate('/credits')} className="flex-1 !border-gold !text-gold hover:!bg-gold/10">Buy Credits</Button>
               )}

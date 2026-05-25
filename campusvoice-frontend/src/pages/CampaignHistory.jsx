@@ -34,7 +34,7 @@ export default function CampaignHistory() {
         action={<Button icon={PlusCircle} onClick={() => navigate('/campaigns/new')}>New Campaign</Button>}
       />
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {['', 'draft', 'queued', 'sending', 'completed', 'failed'].map((s) => (
           <button key={s} onClick={() => setFilter(s)}
             className={`px-3 py-1.5 text-xs rounded-xl border cursor-pointer transition-all ${
