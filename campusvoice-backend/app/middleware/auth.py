@@ -4,7 +4,6 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.candidate import Candidate
 from app.utils.security import decode_token
-from app.config import settings
 
 async def get_current_candidate(
     request: Request,
@@ -61,9 +60,9 @@ async def require_admin(
     current_candidate: Candidate = Depends(get_current_candidate)
 ) -> Candidate:
     """
-    Dependency that restricts route access to Super Admins (matching the configured admin email).
+    Dependency that restricts route access to users with is_admin=True.
     """
-    if current_candidate.email != settings.ADMIN_EMAIL:
+    if not current_candidate.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access restricted: Super Admin credentials required",

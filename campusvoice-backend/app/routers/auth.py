@@ -48,6 +48,13 @@ async def register(
             detail="The specified institution does not exist"
         )
     
+    # Block registration with reserved admin email
+    if schema.email.lower() == settings.ADMIN_EMAIL.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email address is reserved"
+        )
+
     # Create candidate
     new_candidate = Candidate(
         institution_id=schema.institution_id,
@@ -58,8 +65,7 @@ async def register(
         hashed_password=hash_password(schema.password),
         credits_balance=0,
         is_active=True,
-        # Auto-verify the default super admin email to make onboarding simpler
-        is_verified=True if schema.email == settings.ADMIN_EMAIL else False
+        is_verified=False,
     )
     
     db.add(new_candidate)

@@ -92,9 +92,10 @@ async def seed_data():
                     phone="0240000000",
                     position="Super Administrator",
                     hashed_password=hash_password(settings.ADMIN_PASSWORD),
-                    credits_balance=10000, # Large balance for admin testing
+                    credits_balance=10000,
                     is_active=True,
-                    is_verified=True
+                    is_verified=True,
+                    is_admin=True,
                 )
                 session.add(admin_candidate)
                 await session.commit()
