@@ -42,7 +42,12 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Email" icon={Envelope} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@university.edu" />
-          <Input label="Password" icon={Lock} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Enter your password" />
+          <div className="relative">
+            <Input label="Password" icon={Lock} type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Enter your password" />
+            <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-[38px] text-text-muted hover:text-text-primary cursor-pointer">
+              {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           <Button type="submit" icon={SignIn} loading={loading} className="w-full">{loading ? 'Signing in...' : 'Sign In'}</Button>
         </form>
 

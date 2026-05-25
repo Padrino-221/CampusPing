@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getCampaign, deleteCampaign } from '../api/campaigns';
+import { getCampaign, updateCampaign, deleteCampaign } from '../api/campaigns';
 import { formatDate } from '../utils/formatters';
-import { ArrowLeft, PaperPlane, CheckCircle, XCircle, Clock, Trash, Copy } from '@phosphor-icons/react';
+import { ArrowLeft, PaperPlane, CheckCircle, XCircle, Clock, Trash, Copy, PencilSimple, FloppyDisk, X } from '@phosphor-icons/react';
 import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 import toast from 'react-hot-toast';
 
 export default function CampaignDetail() {
@@ -11,12 +12,18 @@ export default function CampaignDetail() {
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', message: '' });
 
   const fetchCampaign = () => {
-    getCampaign(id).then(({ data }) => setCampaign(data)).catch(() => navigate('/campaigns'));
+    getCampaign(id)
+      .then(({ data }) => setCampaign(data))
+      .catch(() => navigate('/campaigns'))
+      .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchCampaign(); setLoading(false); }, [id]);
+  useEffect(() => { fetchCampaign(); }, [id]);
 
   useEffect(() => {
     if (campaign?.status === 'sending') {
@@ -38,6 +45,35 @@ export default function CampaignDetail() {
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Delete failed');
     }
+  };
+
+  const handleEdit = () => {
+    setEditForm({ title: campaign.title || '', message: campaign.message || '' });
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    setSaving(true);
+    try {
+      const payload = {};
+      if (editForm.title !== (campaign.title || '')) payload.title = editForm.title;
+      if (editForm.message !== (campaign.message || '')) payload.message = editForm.message;
+
+      if (Object.keys(payload).length === 0) {
+        toast('No changes to save');
+        setEditing(false);
+        setSaving(false);
+        return;
+      }
+
+      const { data } = await updateCampaign(id, payload);
+      setCampaign(data);
+      setEditing(false);
+      toast.success('Campaign updated');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Update failed');
+    }
+    setSaving(false);
   };
 
   if (loading || !campaign) return <div className="flex justify-center py-16"><p className="text-text-muted">Loading...</p></div>;
@@ -72,6 +108,9 @@ export default function CampaignDetail() {
           <div className="flex gap-2">
             {campaign.status === 'draft' && (
               <>
+                <button onClick={handleEdit} className="p-2 text-text-muted hover:text-primary rounded-xl hover:bg-blue-50 cursor-pointer">
+                  <PencilSimple weight="duotone" size={18} />
+                </button>
                 <button onClick={handleDelete} className="p-2 text-text-muted hover:text-coral rounded-xl hover:bg-red-50 cursor-pointer">
                   <Trash weight="duotone" size={18} />
                 </button>
@@ -82,6 +121,27 @@ export default function CampaignDetail() {
             )}
           </div>
         </div>
+
+        {editing && (
+          <div className="bg-blue-50/50 rounded-2xl p-5 space-y-4">
+            <h3 className="font-semibold text-text-primary text-sm">Edit Campaign</h3>
+            <Input label="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Campaign title" />
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Message</label>
+              <textarea
+                value={editForm.message}
+                onChange={(e) => setEditForm({ ...editForm, message: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                rows={4}
+                placeholder="Your campaign message..."
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button icon={FloppyDisk} loading={saving} onClick={handleSaveEdit} size="sm">{saving ? 'Saving...' : 'Save'}</Button>
+              <Button variant="outline" icon={X} onClick={() => setEditing(false)} size="sm">Cancel</Button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
