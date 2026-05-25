@@ -35,7 +35,7 @@ export default function Register() {
 
   const fields = [
     { key: 'full_name', label: 'Full Name', icon: User, type: 'text', placeholder: 'Kwame Asante' },
-    { key: 'email', label: 'Email', icon: Mail, type: 'email', placeholder: 'kwame@university.edu' },
+    { key: 'email', label: 'Email', icon: Envelope, type: 'email', placeholder: 'kwame@university.edu' },
     { key: 'phone', label: 'Phone', icon: Phone, type: 'tel', placeholder: '0241234567' },
     { key: 'position', label: 'Position Running For', icon: Briefcase, type: 'text', placeholder: 'SRC President' },
   ];

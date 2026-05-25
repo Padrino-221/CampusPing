@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { createCampaign, sendCampaign, scheduleCampaign } from '../api/campaigns';
@@ -32,7 +32,7 @@ export default function NewCampaign() {
   const [sending, setSending] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
 
-  useState(() => {
+  useEffect(() => {
     listSenderIds().then(({ data }) => setSenderIds(data.filter((s) => s.status === 'approved'))).catch(() => {});
     getBalance().then(({ data }) => setBalance(data.balance)).catch(() => {});
   }, []);

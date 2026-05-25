@@ -10,6 +10,7 @@ from app.models.institution import Institution
 from app.schemas.candidate import (
     CandidateCreate,
     CandidateLogin,
+    CandidateUpdate,
     CandidateResponse,
     TokenResponse
 )
@@ -134,6 +135,26 @@ async def logout(response: Response):
 
 @router.get("/me", response_model=CandidateResponse)
 async def me(current_candidate: Candidate = Depends(get_current_candidate)):
+    return current_candidate
+
+
+@router.put("/me", response_model=CandidateResponse)
+async def update_me(
+    schema: CandidateUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    if schema.full_name is not None:
+        current_candidate.full_name = schema.full_name
+    if schema.phone is not None:
+        current_candidate.phone = schema.phone
+    if schema.position is not None:
+        current_candidate.position = schema.position
+    if schema.password is not None:
+        current_candidate.hashed_password = hash_password(schema.password)
+
+    await db.commit()
+    await db.refresh(current_candidate)
     return current_candidate
 
 
