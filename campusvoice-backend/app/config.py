@@ -27,9 +27,9 @@ class Settings(BaseSettings):
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
 
-    # Default Super Admin setup
+    # Admin setup — must be set in .env, no insecure defaults
     ADMIN_EMAIL: str = "admin@campusvoice.com"
-    ADMIN_PASSWORD: str = "adminpassword123"
+    ADMIN_PASSWORD: str
 
     model_config = ConfigDict(env_file=".env", extra="ignore")
 
