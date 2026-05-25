@@ -40,6 +40,7 @@ export default function Sidebar({ open, onClose }) {
             <NavLink
               key={to}
               to={to}
+              end
               onClick={handleNav}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${

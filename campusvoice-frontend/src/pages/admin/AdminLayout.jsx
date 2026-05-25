@@ -21,7 +21,7 @@ export default function AdminLayout() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Shield weight="duotone" size={24} className="text-purple" />
-        <h1 className="text-2xl font-bold text-text-primary">Admin Panel</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Admin Panel</h1>
       </div>
 
       <nav className="flex gap-2 border-b border-gray-100 pb-4 flex-wrap">

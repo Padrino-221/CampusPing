@@ -40,10 +40,10 @@ export default function Audience() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Users weight="duotone" size={24} className="text-primary" />
-        <h1 className="text-2xl font-bold text-text-primary">Student Directory</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Student Directory</h1>
       </div>
 
-      <form onSubmit={handleSearch} className="flex items-center gap-3 max-w-md">
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md">
         <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or phone..." className="flex-1" />
         <Button type="submit" icon={MagnifyingGlass}>Search</Button>
       </form>

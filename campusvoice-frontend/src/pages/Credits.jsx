@@ -69,7 +69,7 @@ export default function Credits() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">Billing & Top-up</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Billing & Top-up</h1>
         <p className="text-sm text-text-muted mt-1">Manage your SMS credits</p>
       </div>
 
@@ -80,16 +80,14 @@ export default function Credits() {
         </div>
       )}
 
-      <div className="card p-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-4 rounded-2xl bg-gold/10">
-            <Coins weight="duotone" size={28} className="text-gold" />
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">Current Balance</p>
-            <p className="text-3xl font-bold text-text-primary">{formatNumber(balance)}</p>
-            <p className="text-xs text-text-muted">SMS Credits</p>
-          </div>
+      <div className="card p-5 sm:p-6 flex items-center gap-4">
+        <div className="p-3 sm:p-4 rounded-2xl bg-gold/10 shrink-0">
+          <Coins weight="duotone" size={28} className="text-gold" />
+        </div>
+        <div>
+          <p className="text-xs text-text-muted">Current Balance</p>
+          <p className="text-2xl sm:text-3xl font-bold text-text-primary">{formatNumber(balance)}</p>
+          <p className="text-xs text-text-muted">SMS Credits</p>
         </div>
       </div>
 
@@ -115,7 +113,7 @@ export default function Credits() {
         </div>
       </div>
 
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6">
         <h3 className="font-semibold text-text-primary mb-4">Transaction History</h3>
         <div className="space-y-3">
           {transactions.length === 0 ? (

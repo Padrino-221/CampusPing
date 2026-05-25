@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react';
 import { getFilterOptions, getCount } from '../../api/students';
 import { formatNumber } from '../../utils/formatters';
-import { Funnel, Users } from '@phosphor-icons/react';
+import { Funnel, Users, SpinnerGap } from '@phosphor-icons/react';
 
 export default function AudienceFilter({ institutionId, onFilterChange }) {
   const [options, setOptions] = useState({ genders: [], levels: [], departments: [], faculties: [], halls: [] });
   const [filters, setFilters] = useState({ gender: [], levels: [], departments: [], faculties: [], halls: [] });
   const [audienceCount, setAudienceCount] = useState(0);
   const [counting, setCounting] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(true);
 
   useEffect(() => {
     if (!institutionId) return;
-    getFilterOptions(institutionId).then(({ data }) => setOptions(data)).catch(() => {});
+    setLoadingOptions(true);
+    getFilterOptions(institutionId)
+      .then(({ data }) => setOptions(data))
+      .catch(() => {})
+      .finally(() => setLoadingOptions(false));
   }, [institutionId]);
 
   useEffect(() => {
@@ -36,6 +41,8 @@ export default function AudienceFilter({ institutionId, onFilterChange }) {
     });
   };
 
+  const hasOptions = Object.values(options).some((arr) => arr.length > 0);
+
   const filterGroups = [
     { key: 'gender', label: 'Gender', options: options.genders },
     { key: 'levels', label: 'Level', options: options.levels },
@@ -51,29 +58,44 @@ export default function AudienceFilter({ institutionId, onFilterChange }) {
         <h3 className="font-semibold text-text-primary">Target Audience</h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filterGroups.map(({ key, label, options: opts }) => (
-          <div key={key}>
-            <p className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wide">{label}</p>
-            <div className="flex flex-wrap gap-2">
-              {opts.map((opt) => {
-                const active = filters[key].includes(opt);
-                return (
-                  <button
-                    key={opt}
-                    onClick={() => toggle(key, opt)}
-                    className={`cursor-pointer px-3 py-1.5 text-xs rounded-xl border transition-all ${
-                      active ? 'bg-primary text-white border-primary' : 'bg-white text-text-muted border-gray-200 hover:border-primary'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+      {loadingOptions ? (
+        <div className="flex items-center justify-center py-8">
+          <SpinnerGap weight="bold" size={24} className="text-primary animate-spin" />
+          <span className="ml-2 text-sm text-text-muted">Loading filters...</span>
+        </div>
+      ) : hasOptions ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filterGroups.map(({ key, label, options: opts }) => (
+            opts.length > 0 && (
+              <div key={key}>
+                <p className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wide">{label}</p>
+                <div className="flex flex-wrap gap-2">
+                  {opts.map((opt) => {
+                    const active = filters[key].includes(opt);
+                    return (
+                      <button
+                        key={opt}
+                        onClick={() => toggle(key, opt)}
+                        className={`cursor-pointer px-3 py-1.5 text-xs rounded-xl border transition-all ${
+                          active ? 'bg-primary text-white border-primary' : 'bg-white text-text-muted border-gray-200 hover:border-primary'
+                        }`}
+                      >
+                        {String(opt)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-6">
+          <Users weight="duotone" size={28} className="mx-auto text-text-muted mb-2" />
+          <p className="text-sm text-text-muted">No students found for your institution.</p>
+          <p className="text-xs text-text-muted mt-1">Contact your admin to upload the student directory.</p>
+        </div>
+      )}
 
       <div className="bg-blue-50 rounded-2xl p-5 text-center">
         <Users weight="duotone" size={24} className="mx-auto text-primary mb-2" />
