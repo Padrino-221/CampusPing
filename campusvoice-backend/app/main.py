@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import AsyncSessionLocal
@@ -9,14 +13,19 @@ from app.models.candidate import Candidate
 from app.utils.security import hash_password
 from app.routers import auth, campaigns, credits, sender_ids, students, institutions, admin
 
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="CampusVoice Bulk SMS Campaign Platform Backend Service",
     version="1.0.0"
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS Configuration
-# Since we use HTTPOnly cookies, allow_credentials=True and specific origins are required.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],

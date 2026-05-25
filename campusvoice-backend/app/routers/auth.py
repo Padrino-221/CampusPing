@@ -22,11 +22,16 @@ from app.utils.security import (
     decode_token
 )
 from app.middleware.auth import get_current_candidate
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     schema: CandidateCreate,
     db: AsyncSession = Depends(get_db)
 ):
@@ -75,7 +80,9 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     schema: CandidateLogin,
     response: Response,
     db: AsyncSession = Depends(get_db)
@@ -165,6 +172,7 @@ async def update_me(
 
 
 @router.post("/refresh")
+@limiter.limit("20/minute")
 async def refresh(
     request: Request,
     response: Response,
