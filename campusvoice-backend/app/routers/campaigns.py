@@ -12,7 +12,7 @@ from app.models.candidate import Candidate
 from app.models.campaign import Campaign, CampaignLog
 from app.models.sender_id import SenderID
 from app.services.filter_engine import get_filtered_count_async
-from app.services.credits import deduct_credits
+from app.services.credits import deduct_credits, add_credits
 from app.utils.sms import calculate_sms_units
 from app.tasks.send_campaign import dispatch_campaign
 
@@ -222,7 +222,13 @@ async def send_campaign(
     await db.commit()
 
     # Dispatch the background task
-    dispatch_campaign.delay(str(campaign_id))
+    try:
+        dispatch_campaign.delay(str(campaign_id))
+    except Exception:
+        campaign.status = "draft"
+        await db.commit()
+        await add_credits(db, candidate.id, credits_needed, f"refund-{campaign_id}", "Refund for failed dispatch")
+        raise HTTPException(status_code=502, detail="Campaign queued but dispatch failed. Please try again.")
 
     return {"message": "Campaign queued for dispatch", "campaign_id": str(campaign_id)}
 
@@ -250,7 +256,14 @@ async def schedule_campaign(
     campaign.scheduled_at = scheduled_at
     await db.commit()
 
-    dispatch_campaign.apply_async((str(campaign_id),), eta=scheduled_at)
+    try:
+        dispatch_campaign.apply_async((str(campaign_id),), eta=scheduled_at)
+    except Exception:
+        campaign.status = "draft"
+        campaign.scheduled_at = None
+        await db.commit()
+        await add_credits(db, candidate.id, credits_needed, f"refund-{campaign_id}", "Refund for failed schedule")
+        raise HTTPException(status_code=502, detail="Campaign scheduled but dispatch failed. Please try again.")
     return {"message": f"Campaign scheduled for {scheduled_at.isoformat()}", "campaign_id": str(campaign_id)}
 
 
