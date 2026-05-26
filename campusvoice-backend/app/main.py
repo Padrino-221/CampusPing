@@ -19,8 +19,12 @@ app = FastAPI(
 origins = [settings.FRONTEND_URL]
 if settings.FRONTEND_LAN_URL:
     origins.append(settings.FRONTEND_LAN_URL)
+if settings.CORS_ORIGINS:
+    origins.extend([o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()])
 if settings.ENVIRONMENT == "development":
     origins.extend(["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"])
+
+print(f"[CORS] Allowed origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,

@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
     FRONTEND_LAN_URL: str = ""
+    CORS_ORIGINS: str = ""
 
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""
