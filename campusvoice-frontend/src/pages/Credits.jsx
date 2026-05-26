@@ -98,18 +98,28 @@ export default function Credits() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {packages.map((pkg) => (
             <div key={pkg.id} className="card p-5 flex flex-col">
-              <h4 className="font-extrabold text-lg text-text-primary">{pkg.name}</h4>
-              <p className="text-2xl font-extrabold text-primary mt-2">{formatNumber(pkg.credits)}</p>
-              <p className="text-sm font-medium text-text-muted mb-1">credits</p>
-              <p className="text-lg font-bold text-text-primary mb-4">{formatCurrency(pkg.price_ghs)}</p>
-              <Button
-                onClick={() => handlePurchase(pkg)}
-                loading={purchasing === pkg.id}
-                icon={CreditCard}
-                className="w-full"
-              >
-                {purchasing === pkg.id ? 'Processing...' : 'Buy Now'}
-              </Button>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-text-muted uppercase tracking-wide">{pkg.name}</span>
+                <span className="text-lg font-bold text-text-primary">{formatCurrency(pkg.price_ghs)}</span>
+              </div>
+              <div className="flex items-baseline gap-1 mb-5">
+                <span className="text-4xl font-extrabold text-text-primary">{formatNumber(pkg.credits)}</span>
+                <span className="text-sm font-medium text-text-muted">credits</span>
+              </div>
+              <div className="mt-auto border-t border-gray-100 pt-4">
+                <div className="flex items-center justify-between text-sm text-text-muted mb-3">
+                  <span>Cost per credit</span>
+                  <span className="font-bold text-text-primary">{formatCurrency(pkg.price_ghs / pkg.credits)}</span>
+                </div>
+                <Button
+                  onClick={() => handlePurchase(pkg)}
+                  loading={purchasing === pkg.id}
+                  icon={CreditCard}
+                  className="w-full"
+                >
+                  {purchasing === pkg.id ? 'Processing...' : 'Buy Now'}
+                </Button>
+              </div>
             </div>
           ))}
         </div>

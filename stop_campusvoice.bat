@@ -1,12 +1,12 @@
 @echo off
-title CampusVoice-Stop
+title CampusAlerts-Stop
 echo ============================================
-echo    Stopping CampusVoice Services
+echo    Stopping CampusAlerts Services
 echo ============================================
 echo.
 
 :: Kill backend process (uvicorn)
-taskkill /fi "WindowTitle eq CampusVoice-Backend*" /f >nul 2>&1
+taskkill /fi "WindowTitle eq CampusAlerts-Backend*" /f >nul 2>&1
 if %errorlevel% equ 0 (
     echo [OK] Backend stopped
 ) else (
@@ -14,20 +14,38 @@ if %errorlevel% equ 0 (
 )
 
 :: Kill frontend process (Vite)
-taskkill /fi "WindowTitle eq CampusVoice-Frontend*" /f >nul 2>&1
+taskkill /fi "WindowTitle eq CampusAlerts-Frontend*" /f >nul 2>&1
 if %errorlevel% equ 0 (
     echo [OK] Frontend stopped
 ) else (
     echo [--] Frontend not running
 )
 
+:: Kill Celery worker
+taskkill /fi "WindowTitle eq CampusAlerts-Celery-Worker*" /f >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] Celery Worker stopped
+) else (
+    echo [--] Celery Worker not running
+)
+
+:: Kill Celery beat
+taskkill /fi "WindowTitle eq CampusAlerts-Celery-Beat*" /f >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] Celery Beat stopped
+) else (
+    echo [--] Celery Beat not running
+)
+
 :: Kill any lingering Python/uvicorn on port 8000
 for /f "tokens=5" %%a in ('netstat -ano ^| find "LISTENING" ^| find ":8000"') do (
     taskkill /f /pid %%a >nul 2>&1 && echo [OK] Killed process on port 8000
 )
-:: Kill any lingering Node/Vite on port 5173
-for /f "tokens=5" %%a in ('netstat -ano ^| find "LISTENING" ^| find ":5173"') do (
-    taskkill /f /pid %%a >nul 2>&1 && echo [OK] Killed process on port 5173
+:: Kill any lingering Node/Vite on ports 5173-5179
+for %%p in (5173 5174 5175 5176 5177 5178 5179) do (
+    for /f "tokens=5" %%a in ('netstat -ano ^| find "LISTENING" ^| find ":%%p"') do (
+        taskkill /f /pid %%a >nul 2>&1 && echo [OK] Killed process on %%p
+    )
 )
 
 echo.

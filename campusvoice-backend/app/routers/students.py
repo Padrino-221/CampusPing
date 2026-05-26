@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, distinct, func, and_
+from sqlalchemy import select, distinct
 from typing import Optional
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.student import StudentDirectory
 from app.services.filter_engine import get_filtered_count_async
-from app.middleware.auth import get_current_candidate, require_admin
+from app.middleware.auth import get_current_candidate
 from app.models.candidate import Candidate
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
@@ -37,14 +37,12 @@ async def get_filter_options(
     levels = await fetch_distinct(StudentDirectory.level)
     departments = await fetch_distinct(StudentDirectory.department)
     faculties = await fetch_distinct(StudentDirectory.faculty)
-    halls = await fetch_distinct(StudentDirectory.hall)
 
     return {
         "genders": genders,
         "levels": sorted([int(l) for l in levels if l]),
         "departments": departments,
         "faculties": faculties,
-        "halls": halls,
     }
 
 
@@ -67,40 +65,3 @@ async def get_student_count(
     return {"count": count}
 
 
-@router.get("/directory")
-async def list_student_directory(
-    search: str = "",
-    page: int = 1,
-    limit: int = 20,
-    db: AsyncSession = Depends(get_db),
-    candidate: Candidate = Depends(get_current_candidate)
-):
-    conditions = [
-        StudentDirectory.institution_id == candidate.institution_id,
-        StudentDirectory.is_active == True,
-    ]
-    if search:
-        conditions.append(
-            StudentDirectory.full_name.ilike(f"%{search}%") |
-            StudentDirectory.phone.ilike(f"%{search}%")
-        )
-    offset = (page - 1) * limit
-    result = await db.execute(
-        select(StudentDirectory).where(and_(*conditions))
-        .order_by(StudentDirectory.full_name.asc()).offset(offset).limit(limit)
-    )
-    total = await db.execute(
-        select(func.count(StudentDirectory.id)).where(and_(*conditions))
-    )
-    return {
-        "students": [
-            {
-                "id": str(s.id), "full_name": s.full_name, "phone": s.phone,
-                "gender": s.gender, "level": s.level, "department": s.department,
-                "faculty": s.faculty, "hall": s.hall, "programme": s.programme,
-            }
-            for s in result.scalars().all()
-        ],
-        "total": total.scalar(),
-        "page": page, "limit": limit,
-    }

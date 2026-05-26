@@ -18,10 +18,12 @@ class CandidateUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     position: Optional[str] = Field(None, max_length=255)
     password: Optional[str] = Field(None, min_length=6)
+    institution_id: Optional[uuid.UUID] = None
 
 class CandidateResponse(CandidateBase):
     id: uuid.UUID
     institution_id: uuid.UUID
+    institution_name: Optional[str] = None
     profile_photo: Optional[str] = None
     credits_balance: int
     is_active: bool

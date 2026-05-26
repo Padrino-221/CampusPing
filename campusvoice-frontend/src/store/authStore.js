@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getMe } from '../api/auth';
 
+const TIMEOUT_MS = 5000;
+
 const useAuthStore = create((set) => ({
   candidate: null,
   loading: true,
@@ -11,8 +13,11 @@ const useAuthStore = create((set) => ({
   },
   fetchMe: async () => {
     try {
-      const { data } = await getMe();
-      set({ candidate: data, loading: false });
+      const result = await Promise.race([
+        getMe(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)),
+      ]);
+      set({ candidate: result.data, loading: false });
     } catch {
       set({ candidate: null, loading: false });
     }

@@ -8,12 +8,37 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function GoogleSignInButton({ institutionId, onNeedInstitution }) {
   const ref = useRef(null);
+  const initialized = useRef(false);
+  const instRef = useRef(institutionId);
+  instRef.current = institutionId;
   const { setCandidate } = useAuthStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
+  async function handleCredentialResponse(response) {
+    if (!instRef.current) {
+      if (onNeedInstitution) onNeedInstitution();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await googleAuth({
+        token: response.credential,
+        institution_id: instRef.current,
+      });
+      setCandidate(data.candidate);
+      toast.success('Welcome!');
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Google sign-in failed');
+    }
+    setLoading(false);
+  }
+
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !window.google) return;
+    if (!GOOGLE_CLIENT_ID || !window.google || initialized.current) return;
+    initialized.current = true;
 
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
@@ -28,28 +53,7 @@ export default function GoogleSignInButton({ institutionId, onNeedInstitution })
       shape: 'rectangular',
       logo_alignment: 'center',
     });
-  }, [institutionId]);
-
-  async function handleCredentialResponse(response) {
-    if (!institutionId) {
-      if (onNeedInstitution) onNeedInstitution();
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data } = await googleAuth({
-        token: response.credential,
-        institution_id: institutionId,
-      });
-      setCandidate(data.candidate);
-      toast.success('Welcome!');
-      navigate('/dashboard');
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Google sign-in failed');
-    }
-    setLoading(false);
-  }
+  }, []);
 
   if (!GOOGLE_CLIENT_ID) return null;
 

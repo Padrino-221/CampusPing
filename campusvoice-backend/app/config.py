@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
 
 class Settings(BaseSettings):
-    APP_NAME: str = "CampusVoice"
+    APP_NAME: str = "CampusAlerts"
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # SMS Gateway
     ARKESEL_API_KEY: str
-    ARKESEL_SENDER_ID: str = "CampusVoice"
+    ARKESEL_SENDER_ID: str = "CampusAlerts"
 
     # Paystack
     PAYSTACK_SECRET_KEY: str
@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_LAN_URL: str = ""
 
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""

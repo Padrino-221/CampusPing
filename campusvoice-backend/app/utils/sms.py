@@ -39,21 +39,25 @@ def calculate_sms_units(message: str) -> int:
     Unicode standards:
       - Single message: up to 70 characters.
       - Multi-part message: batches of 67 characters per part.
+    Non-BMP characters (emoji) count as 2 UCS-2 code units and are billed accordingly.
     """
     if not message:
         return 0
 
     is_unicode = detect_unicode(message)
-    
+
     if is_unicode:
-        length = len(message)
+        length = 0
+        for c in message:
+            if ord(c) > 0xFFFF:
+                length += 2
+            else:
+                length += 1
         if length <= 70:
             return 1
-        # Ceiling division: each multi-part segment is 67 characters
         return -(-length // 67)
     else:
         length = get_gsm7_message_length(message)
         if length <= 160:
             return 1
-        # Ceiling division: each multi-part segment is 153 characters
         return -(-length // 153)

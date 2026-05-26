@@ -3,7 +3,7 @@ import hashlib
 import hmac
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from pydantic import BaseModel
 import httpx
 
@@ -11,7 +11,7 @@ from app.database import get_db
 from app.middleware.auth import get_current_candidate
 from app.models.candidate import Candidate
 from app.models.credits import CreditPackage, CreditTransaction
-from app.services.credits import add_credits, get_balance
+from app.services.credits import get_balance
 from app.config import settings
 
 router = APIRouter(prefix="/api/credits", tags=["Credits"])
@@ -161,25 +161,25 @@ async def verify_payment(
     if not data.get("status") or data["data"]["status"] != "success":
         raise HTTPException(status_code=400, detail="Payment not successful")
 
-    result = await db.execute(
-        select(CreditTransaction).where(
-            CreditTransaction.reference == reference,
-            CreditTransaction.type == "pending"
-        )
+    # Atomic claim check: only claim if still 'pending'
+    stmt = (
+        update(CreditTransaction)
+        .where(CreditTransaction.reference == reference, CreditTransaction.type == "pending")
+        .values(type="completed")
+        .returning(CreditTransaction.id, CreditTransaction.candidate_id, CreditTransaction.amount)
     )
-    pending_txn = result.scalar_one_or_none()
-    if not pending_txn:
+    result = await db.execute(stmt)
+    row = result.fetchone()
+    if not row:
         return {"message": "Already processed"}
 
-    await add_credits(
-        db,
-        candidate_id=pending_txn.candidate_id,
-        amount=pending_txn.amount,
-        reference=reference,
-        description=f"Payment confirmed: {pending_txn.description}"
-    )
+    txn_id, txn_candidate_id, txn_amount = row
 
-    pending_txn.type = "completed"
+    await db.execute(
+        update(Candidate)
+        .where(Candidate.id == txn_candidate_id)
+        .values(credits_balance=Candidate.credits_balance + txn_amount)
+    )
     await db.commit()
 
     return {"message": "Credited successfully"}
@@ -206,25 +206,25 @@ async def payment_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
     ref = data["data"]["reference"]
 
-    result = await db.execute(
-        select(CreditTransaction).where(
-            CreditTransaction.reference == ref,
-            CreditTransaction.type == "pending"
-        )
+    # Atomic claim check: only claim if still 'pending'
+    stmt = (
+        update(CreditTransaction)
+        .where(CreditTransaction.reference == ref, CreditTransaction.type == "pending")
+        .values(type="completed")
+        .returning(CreditTransaction.id, CreditTransaction.candidate_id, CreditTransaction.amount)
     )
-    pending_txn = result.scalar_one_or_none()
-    if not pending_txn:
+    result = await db.execute(stmt)
+    row = result.fetchone()
+    if not row:
         return {"message": "Already processed or not found"}
 
-    await add_credits(
-        db,
-        candidate_id=pending_txn.candidate_id,
-        amount=pending_txn.amount,
-        reference=ref,
-        description=f"Payment confirmed via webhook: {pending_txn.description}"
-    )
+    txn_id, txn_candidate_id, txn_amount = row
 
-    pending_txn.type = "completed"
+    await db.execute(
+        update(Candidate)
+        .where(Candidate.id == txn_candidate_id)
+        .values(credits_balance=Candidate.credits_balance + txn_amount)
+    )
     await db.commit()
 
     return {"message": "Webhook processed successfully"}

@@ -9,7 +9,7 @@ export default function Pagination({ page, total, limit = 20, onChange }) {
       <button
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        className="inline-flex items-center gap-1 px-3 py-2 text-xs font-bold border border-gray-200 rounded-xl text-text-muted hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+        className="inline-flex items-center gap-1 px-3 py-2.5 text-sm font-bold border border-gray-200 rounded-xl text-text-muted hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
       >
         <CaretLeft weight="bold" size={14} /> Previous
       </button>
@@ -19,7 +19,7 @@ export default function Pagination({ page, total, limit = 20, onChange }) {
       <button
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
-        className="inline-flex items-center gap-1 px-3 py-2 text-xs font-bold border border-gray-200 rounded-xl text-text-muted hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+        className="inline-flex items-center gap-1 px-3 py-2.5 text-sm font-bold border border-gray-200 rounded-xl text-text-muted hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
       >
         Next <CaretRight weight="duotone" size={16} />
       </button>

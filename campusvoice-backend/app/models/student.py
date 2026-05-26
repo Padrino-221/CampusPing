@@ -21,7 +21,6 @@ class StudentDirectory(Base):
     level: Mapped[int] = mapped_column(Integer, nullable=True)      # 100, 200, 300, etc.
     department: Mapped[str] = mapped_column(String(255), nullable=True)
     faculty: Mapped[str] = mapped_column(String(255), nullable=True)
-    hall: Mapped[str] = mapped_column(String(255), nullable=True)
     programme: Mapped[str] = mapped_column(String(255), nullable=True)
     student_id: Mapped[str] = mapped_column(String(50), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -38,5 +37,4 @@ class StudentDirectory(Base):
         Index("idx_students_level", "level"),
         Index("idx_students_department", "department"),
         Index("idx_students_faculty", "faculty"),
-        Index("idx_students_hall", "hall"),
     )

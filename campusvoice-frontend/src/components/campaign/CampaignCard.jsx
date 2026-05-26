@@ -17,25 +17,24 @@ export default function CampaignCard({ campaign }) {
 
   return (
     <div className="flex items-center justify-between p-4 rounded-2xl bg-surface/50 hover:bg-surface transition-colors">
-      <div className="flex items-start gap-4">
-        <div className={`p-3 rounded-xl ${cfg.bg}`}>
-          <Icon weight="duotone" size={20} className={cfg.color} />
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`p-2 rounded-xl ${cfg.bg} shrink-0`}>
+          <Icon weight="duotone" size={18} className={cfg.color} />
         </div>
-        <div>
-          <h4 className="text-sm font-bold text-text-primary">{campaign.title || 'Untitled Campaign'}</h4>
-          <div className="flex items-center gap-3 mt-1 text-xs font-medium text-text-muted">
-            <span>{campaign.recipient_count?.toLocaleString()} recipients</span>
-            <span>{campaign.credits_used} credits</span>
-            <span>{formatRelative(campaign.created_at)}</span>
-          </div>
+        <div className="min-w-0">
+          <h4 className="text-sm font-bold text-text-primary truncate">{campaign.title || 'Untitled Campaign'}</h4>
+          <p className="text-xs text-text-muted mt-0.5">{formatRelative(campaign.created_at)}</p>
         </div>
       </div>
-      <button
-        onClick={() => navigate(`/campaigns/${campaign.id}`)}
-        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-dark font-bold cursor-pointer"
-      >
-        View <ArrowRight weight="bold" size={12} />
-      </button>
+      <div className="flex items-center gap-3 shrink-0 ml-3">
+        <span className="text-xs font-semibold text-text-muted">{campaign.recipient_count?.toLocaleString()} recipients</span>
+        <button
+          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary-dark font-bold cursor-pointer"
+        >
+          View <ArrowRight weight="bold" size={12} />
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,17 @@
+node_modules/
+venv/
+__pycache__/
+*.pyc
+dist/
+.env
+celerybeat-schedule*
+*.log
+*.err
+celery_beat*
+celery_worker*
+*.bak
+*.dat
+*.dir
+*.pyd
+*.ico
+.DS_Store

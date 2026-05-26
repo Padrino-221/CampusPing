@@ -12,7 +12,6 @@ import NewCampaign from './pages/NewCampaign';
 import CampaignDetail from './pages/CampaignDetail';
 import CampaignHistory from './pages/CampaignHistory';
 import SenderIDs from './pages/SenderIDs';
-import Audience from './pages/Audience';
 import Credits from './pages/Credits';
 import Profile from './pages/Profile';
 import AdminLayout from './pages/admin/AdminLayout';
@@ -23,6 +22,8 @@ import AdminRevenue from './pages/admin/Revenue';
 import AdminInstitutions from './pages/admin/Institutions';
 import AdminCreditPackages from './pages/admin/CreditPackages';
 import AdminCampaigns from './pages/admin/Campaigns';
+import AdminTransactions from './pages/admin/Transactions';
+import AdminSystemSettings from './pages/admin/SystemSettings';
 
 function AppLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -30,7 +31,7 @@ function AppLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-surface">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-[260px]">
         <TopBar onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         <main className="flex-1 p-4 lg:p-8">{children}</main>
       </div>
@@ -78,10 +79,6 @@ export default function App() {
           element={<ProtectedRoute><AppLayout><CandidateOnly><SenderIDs /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
         <Route
-          path="/audience"
-          element={<ProtectedRoute><AppLayout><CandidateOnly><Audience /></CandidateOnly></AppLayout></ProtectedRoute>}
-        />
-        <Route
           path="/credits"
           element={<ProtectedRoute><AppLayout><CandidateOnly><Credits /></CandidateOnly></AppLayout></ProtectedRoute>}
         />
@@ -95,9 +92,11 @@ export default function App() {
           <Route path="sender-ids" element={<AdminSenderIDs />} />
           <Route path="candidates" element={<AdminCandidates />} />
           <Route path="campaigns" element={<AdminCampaigns />} />
+          <Route path="transactions" element={<AdminTransactions />} />
           <Route path="revenue" element={<AdminRevenue />} />
           <Route path="institutions" element={<AdminInstitutions />} />
           <Route path="credit-packages" element={<AdminCreditPackages />} />
+          <Route path="system" element={<AdminSystemSettings />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

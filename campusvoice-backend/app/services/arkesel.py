@@ -146,7 +146,19 @@ class ArkeselService:
                     timeout=30.0
                 )
                 response.raise_for_status()
-                last_response = response.json()
+                raw = response.json()
+                last_response = raw
+
+        if isinstance(last_response, list):
+            all_success = all(
+                isinstance(r, dict) and r.get("status") == "success"
+                for r in last_response
+            )
+            return {
+                "status": "success" if all_success else "partial",
+                "message": "Batch processed",
+                "data": {"items": last_response}
+            }
 
         return last_response
 

@@ -31,7 +31,7 @@ export default function AdminCampaigns() {
       <div className="flex gap-2 flex-wrap">
         {['', 'draft', 'queued', 'sending', 'completed', 'failed'].map((s) => (
           <button key={s} onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 text-xs rounded-xl border cursor-pointer transition-all ${
+            className={`px-4 py-2.5 text-sm rounded-xl border cursor-pointer transition-all ${
               filter === s ? 'bg-purple text-white border-purple' : 'bg-white text-text-muted border-gray-200 hover:border-purple'
             }`}
           >{s || 'All'}</button>

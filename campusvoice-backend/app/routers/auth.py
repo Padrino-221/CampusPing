@@ -2,6 +2,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from app.database import get_db
 from app.config import settings
@@ -83,7 +84,7 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     # Retrieve Candidate
-    stmt = select(Candidate).where(Candidate.email == schema.email)
+    stmt = select(Candidate).options(joinedload(Candidate.institution)).where(Candidate.email == schema.email)
     result = await db.execute(stmt)
     candidate = result.scalar_one_or_none()
     
@@ -128,6 +129,9 @@ async def login(
         path="/"
     )
     
+    if candidate and candidate.institution:
+        candidate.institution_name = candidate.institution.name
+
     return {
         "message": "Login successful",
         "candidate": candidate
@@ -142,8 +146,17 @@ async def logout(response: Response):
 
 
 @router.get("/me", response_model=CandidateResponse)
-async def me(current_candidate: Candidate = Depends(get_current_candidate)):
-    return current_candidate
+async def me(
+    current_candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Candidate).options(joinedload(Candidate.institution)).where(Candidate.id == current_candidate.id)
+    )
+    candidate = result.unique().scalar_one_or_none()
+    if candidate and candidate.institution:
+        candidate.institution_name = candidate.institution.name
+    return candidate
 
 
 @router.put("/me", response_model=CandidateResponse)
@@ -160,9 +173,26 @@ async def update_me(
         current_candidate.position = schema.position
     if schema.password is not None:
         current_candidate.hashed_password = hash_password(schema.password)
+    if schema.institution_id is not None:
+        inst_stmt = select(Institution).where(Institution.id == schema.institution_id)
+        inst_result = await db.execute(inst_stmt)
+        if not inst_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The specified institution does not exist"
+            )
+        current_candidate.institution_id = schema.institution_id
 
     await db.commit()
     await db.refresh(current_candidate)
+
+    # Fetch the institution name separately to avoid identity map stale relationships
+    inst_result = await db.execute(
+        select(Institution).where(Institution.id == current_candidate.institution_id)
+    )
+    institution = inst_result.scalar_one_or_none()
+    current_candidate.institution_name = institution.name if institution else None
+
     return current_candidate
 
 

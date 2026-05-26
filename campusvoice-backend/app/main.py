@@ -11,15 +11,15 @@ from app.routers import auth, campaigns, credits, sender_ids, students, institut
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="CampusVoice Bulk SMS Campaign Platform Backend Service",
+    description="CampusAlerts Bulk SMS Campaign Platform Backend Service",
     version="1.0.0"
 )
 
 # CORS Configuration
-# Since we use HTTPOnly cookies, allow_credentials=True and specific origins are required.
+# Allow all local network origins in development.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,59 +43,46 @@ async def health_check():
     }
 
 @app.on_event("startup")
-async def seed_data():
+async def seed_admin():
     """
-    On application startup, seed default institutions and the super admin candidate
-    if they do not already exist. This ensures immediate usability of the platform.
+    On application startup, seed the super admin candidate and a default institution
+    if they do not already exist. No dummy data is created.
     """
     async with AsyncSessionLocal() as session:
-        # 1. Seed Institutions
-        default_campuses = [
-            {"name": "University of Energy and Natural Resources", "slug": "uenr", "country": "Ghana"},
-            {"name": "Kwame Nkrumah University of Science and Technology", "slug": "knust", "country": "Ghana"},
-            {"name": "University of Ghana", "slug": "ug", "country": "Ghana"}
-        ]
+        # Check if admin already exists
+        stmt = select(Candidate).where(Candidate.email == settings.ADMIN_EMAIL)
+        res = await session.execute(stmt)
+        existing_admin = res.scalar_one_or_none()
         
-        seeded_institutions = []
-        for campus in default_campuses:
-            stmt = select(Institution).where(Institution.slug == campus["slug"])
-            res = await session.execute(stmt)
-            existing = res.scalar_one_or_none()
-            if not existing:
-                new_inst = Institution(
-                    name=campus["name"],
-                    slug=campus["slug"],
-                    country=campus["country"],
-                    is_active=True
-                )
-                session.add(new_inst)
-                seeded_institutions.append(new_inst)
-            else:
-                seeded_institutions.append(existing)
-                
+        if existing_admin:
+            return
+
+        # Create a default institution for the admin
+        inst_stmt = select(Institution).where(Institution.slug == "default")
+        inst_res = await session.execute(inst_stmt)
+        inst = inst_res.scalar_one_or_none()
+
+        if not inst:
+            inst = Institution(
+                name="Default Institution",
+                slug="default",
+                country="Ghana",
+                is_active=True
+            )
+            session.add(inst)
+            await session.flush()
+
+        admin_candidate = Candidate(
+            institution_id=inst.id,
+            full_name="Platform Admin",
+            email=settings.ADMIN_EMAIL,
+            phone="0240000000",
+            position="Super Administrator",
+            hashed_password=hash_password(settings.ADMIN_PASSWORD),
+            credits_balance=10000,
+            is_active=True,
+            is_verified=True
+        )
+        session.add(admin_candidate)
         await session.commit()
-        
-        # Resolve UENR as the default seeding institution for the admin candidate
-        uenr_inst = next((i for i in seeded_institutions if i.slug == "uenr"), None)
-        
-        if uenr_inst:
-            # 2. Seed Super Admin Candidate
-            stmt = select(Candidate).where(Candidate.email == settings.ADMIN_EMAIL)
-            res = await session.execute(stmt)
-            existing_admin = res.scalar_one_or_none()
-            
-            if not existing_admin:
-                admin_candidate = Candidate(
-                    institution_id=uenr_inst.id,
-                    full_name="Platform Admin",
-                    email=settings.ADMIN_EMAIL,
-                    phone="0240000000",
-                    position="Super Administrator",
-                    hashed_password=hash_password(settings.ADMIN_PASSWORD),
-                    credits_balance=10000, # Large balance for admin testing
-                    is_active=True,
-                    is_verified=True
-                )
-                session.add(admin_candidate)
-                await session.commit()
-                print(f"Super Admin seeded successfully with email: {settings.ADMIN_EMAIL}")
+        print(f"Super Admin seeded successfully with email: {settings.ADMIN_EMAIL}")

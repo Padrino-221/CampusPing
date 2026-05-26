@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { CaretDown, Check } from '@phosphor-icons/react';
 
-export default function Select({ label, icon: Icon, options, placeholder, error, value, onChange, className = '', ...props }) {
+export default function Select({ label, icon: Icon, options, placeholder, error, value, onChange, className = '', disabled, ...props }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -23,14 +23,15 @@ export default function Select({ label, icon: Icon, options, placeholder, error,
         {Icon && <Icon weight="duotone" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" />}
         <button
           type="button"
-          onClick={() => setOpen(!open)}
-          className={`w-full flex items-center ${Icon ? 'pl-10' : 'pl-4'} pr-10 py-2.5 border ${error ? 'border-coral' : 'border-gray-200'} rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-left ${value ? 'text-text-primary' : 'text-text-muted'}`}
+          disabled={disabled}
+          onClick={() => !disabled && setOpen(!open)}
+          className={`w-full flex items-center ${Icon ? 'pl-10' : 'pl-4'} pr-10 py-2.5 border ${error ? 'border-coral' : disabled ? 'border-gray-100 bg-gray-50' : 'border-gray-200'} rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-left ${value ? 'text-text-primary' : 'text-text-muted'} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
         >
           {display}
         </button>
         <CaretDown weight="duotone" size={16} className={`absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none transition-transform ${open ? 'rotate-180' : ''}`} />
-        {open && (
-          <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto py-1">
+        {open && !disabled && (
+          <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto py-1">
             {placeholder && (
               <button
                 type="button"

@@ -9,7 +9,7 @@ export default function FilterBar({ options, selected, onChange }) {
           <button
             key={value}
             onClick={() => onChange(isActive ? '' : value)}
-            className={`px-3 py-1.5 text-xs rounded-xl border cursor-pointer transition-all ${
+            className={`px-4 py-2.5 text-sm rounded-xl border cursor-pointer transition-all ${
               isActive
                 ? 'bg-primary text-white border-primary'
                 : 'bg-white text-text-muted border-gray-200 hover:border-primary hover:text-primary'

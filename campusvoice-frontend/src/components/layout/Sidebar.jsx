@@ -1,11 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { Layout, PaperPlane, Users, CreditCard, ChartBar, ChatDots, X, GraduationCap, Shield, BuildingApartment, Package, CurrencyCircleDollar, Megaphone, ArrowRight } from '@phosphor-icons/react';
+import { Layout, PaperPlane, CreditCard, ChartBar, ChatDots, X, GraduationCap, Shield, BuildingApartment, Package, CurrencyCircleDollar, Bell, Gear, Users } from '@phosphor-icons/react';
 import useAuthStore from '../../store/authStore';
 
 const candidateNavItems = [
   { to: '/dashboard', label: 'Dashboard', icon: Layout },
   { to: '/campaigns/new', label: 'Campaign Builder', icon: PaperPlane },
-  { to: '/audience', label: 'Student Directory', icon: Users },
   { to: '/campaigns', label: 'Campaign History', icon: ChartBar },
   { to: '/sender-ids', label: 'Sender IDs', icon: ChatDots },
   { to: '/credits', label: 'Billing & Top-up', icon: CreditCard },
@@ -17,9 +16,11 @@ const adminNavItems = [
   { to: '/admin/sender-ids', label: 'Sender ID Review', icon: ChatDots },
   { to: '/admin/candidates', label: 'Candidates', icon: Users },
   { to: '/admin/campaigns', label: 'All Campaigns', icon: PaperPlane },
-  { to: '/admin/revenue', label: 'Revenue', icon: CurrencyCircleDollar },
+  { to: '/admin/transactions', label: 'Transactions', icon: CurrencyCircleDollar },
+  { to: '/admin/revenue', label: 'Revenue', icon: ChartBar },
   { to: '/admin/institutions', label: 'Institutions', icon: BuildingApartment },
   { to: '/admin/credit-packages', label: 'Credit Packages', icon: Package },
+  { to: '/admin/system', label: 'System Settings', icon: Gear },
 ];
 
 export default function Sidebar({ open, onClose }) {
@@ -32,7 +33,7 @@ export default function Sidebar({ open, onClose }) {
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden" onClick={onClose} />}
-      <aside className={`fixed lg:sticky top-0 left-0 z-40 w-[260px] min-h-screen bg-white flex flex-col transition-transform duration-300 ${
+      <aside className={`fixed top-0 left-0 z-40 w-[260px] h-screen bg-white flex flex-col transition-transform duration-300 ${
         open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         {/* Logo */}
@@ -44,10 +45,10 @@ export default function Sidebar({ open, onClose }) {
               </div>
             ) : (
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Megaphone weight="duotone" size={18} className="text-primary" />
+                <Bell weight="duotone" size={18} className="text-primary" />
               </div>
             )}
-            <span className="font-bold text-[17px] tracking-tight text-text-primary">{isAdmin ? 'Admin Panel' : 'CampusVoice'}</span>
+            <span className="font-bold text-[17px] tracking-tight text-text-primary">{isAdmin ? 'Admin Panel' : 'CampusAlerts'}</span>
           </div>
           <button onClick={onClose} className="lg:hidden text-text-muted hover:text-text-primary cursor-pointer">
             <X weight="bold" size={18} />
@@ -78,16 +79,6 @@ export default function Sidebar({ open, onClose }) {
           ))}
         </nav>
 
-        {/* Bottom promo */}
-        {!isAdmin && (
-          <div className="mx-4 mb-6 p-5 rounded-2xl bg-[#1E2432] text-white">
-            <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Need Custom Sender IDs?</p>
-            <p className="text-sm font-bold mt-1 mb-3">Upgrade to <span className="text-primary">Pro plan</span></p>
-            <button className="flex items-center gap-2 text-xs font-semibold text-primary hover:text-blue-400 transition-colors cursor-pointer">
-              Learn more <ArrowRight weight="bold" size={12} />
-            </button>
-          </div>
-        )}
       </aside>
     </>
   );

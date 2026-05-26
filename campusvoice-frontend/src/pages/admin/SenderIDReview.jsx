@@ -73,8 +73,8 @@ export default function AdminSenderIDs() {
                 </div>
                 {s.status === 'pending' && (
                   <div className="flex gap-2">
-                    <Button size="sm" variant="primary" icon={CheckCircle} onClick={() => handleApprove(s.id)}>Approve</Button>
-                    <Button size="sm" variant="danger" icon={XCircle} onClick={() => setRejectModal(s.id)}>Reject</Button>
+                    <Button variant="primary" icon={CheckCircle} onClick={() => handleApprove(s.id)}>Approve</Button>
+                    <Button variant="danger" icon={XCircle} onClick={() => setRejectModal(s.id)}>Reject</Button>
                   </div>
                 )}
               </div>
@@ -93,8 +93,8 @@ export default function AdminSenderIDs() {
               rows={3} placeholder="Reason for rejection..."
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setRejectModal(null)}>Cancel</Button>
-              <Button variant="danger" size="sm" onClick={handleReject}>Reject</Button>
+              <Button variant="outline" onClick={() => setRejectModal(null)}>Cancel</Button>
+              <Button variant="danger" onClick={handleReject}>Reject</Button>
             </div>
           </div>
         </div>

@@ -15,7 +15,9 @@ from app.models.campaign import Campaign, CampaignLog
 from app.models.credits import CreditPackage, CreditTransaction
 from app.models.institution import Institution
 from app.utils.phone import normalize_phone
-from app.services.credits import add_credits
+from app.utils.security import hash_password
+from app.config import settings
+from app.services.arkesel import arkesel
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
@@ -128,6 +130,19 @@ async def toggle_candidate(
     await db.commit()
     return {"id": str(candidate.id), "is_active": candidate.is_active}
 
+@router.delete("/candidates/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_candidate(
+    candidate_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(404, "Candidate not found")
+    await db.delete(candidate)
+    await db.commit()
+
 @router.get("/candidates/{candidate_id}/campaigns")
 async def get_candidate_campaigns(
     candidate_id: uuid.UUID,
@@ -223,6 +238,8 @@ async def reject_sender_id(
 @router.get("/students")
 async def list_students(
     institution_id: str = None, search: str = "",
+    gender: str = None, level: int = None,
+    department: str = None, faculty: str = None,
     page: int = 1, limit: int = 20,
     db: AsyncSession = Depends(get_db),
     _=Depends(require_admin)
@@ -235,6 +252,14 @@ async def list_students(
             StudentDirectory.full_name.ilike(f"%{search}%") |
             StudentDirectory.phone.ilike(f"%{search}%")
         )
+    if gender:
+        conditions.append(StudentDirectory.gender == gender)
+    if level:
+        conditions.append(StudentDirectory.level == level)
+    if department:
+        conditions.append(StudentDirectory.department == department)
+    if faculty:
+        conditions.append(StudentDirectory.faculty == faculty)
     offset = (page - 1) * limit
     result = await db.execute(
         select(StudentDirectory).where(and_(*conditions))
@@ -248,7 +273,7 @@ async def list_students(
             {
                 "id": str(s.id), "full_name": s.full_name, "phone": s.phone,
                 "gender": s.gender, "level": s.level, "department": s.department,
-                "faculty": s.faculty, "hall": s.hall, "programme": s.programme,
+                "faculty": s.faculty, "programme": s.programme,
                 "student_id": s.student_id, "is_active": s.is_active,
                 "institution_id": str(s.institution_id),
             }
@@ -286,9 +311,13 @@ async def import_students(
 
     for i, row in enumerate(rows):
         try:
-            phone = normalize_phone(row.get("phone", ""))
+            phone_input = row.get("phone", "")
+            phone = normalize_phone(str(phone_input))
             if not phone:
-                errors.append({"row": i + 1, "reason": "Missing or invalid phone"})
+                errors.append({
+                    "row": i + 1,
+                    "reason": f"Invalid or non-Ghanaian mobile number format: '{phone_input}'"
+                })
                 skipped += 1
                 continue
 
@@ -307,7 +336,6 @@ async def import_students(
                 "level": int(row["level"]) if row.get("level") else None,
                 "department": row.get("department"),
                 "faculty": row.get("faculty"),
-                "hall": row.get("hall"),
                 "programme": row.get("programme"),
             }
 
@@ -333,8 +361,8 @@ async def download_template(_=Depends(require_admin)):
     import io
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["phone", "full_name", "gender", "level", "department", "faculty", "hall", "programme"])
-    writer.writerow(["0241234567", "John Doe", "male", "200", "Computer Science", "Science", "Legon Hall", "BSc Computer Science"])
+    writer.writerow(["phone", "full_name", "gender", "level", "department", "faculty", "programme"])
+    writer.writerow(["0241234567", "John Doe", "male", "200", "Computer Science", "Science", "BSc Computer Science"])
     from fastapi.responses import Response
     return Response(
         content=output.getvalue().encode("utf-8-sig"),
@@ -356,6 +384,55 @@ async def delete_student(
     await db.delete(student)
     await db.commit()
     return {"message": "Student deleted"}
+
+# ─── Arkesel Balance ─────────────────────────────────────────────
+
+@router.get("/credits/arkesel-balance")
+async def get_arkesel_balance(_=Depends(require_admin)):
+    result = await arkesel.check_balance()
+    if result.get("status") == "success":
+        data = result.get("data", {})
+        return {
+            "sms_balance": data.get("sms_balance", 0),
+            "main_balance": data.get("main_balance", "GHS 0"),
+        }
+    return {"sms_balance": 0, "main_balance": "GHS 0"}
+
+# ─── Transactions ─────────────────────────────────────────────────
+
+@router.get("/transactions")
+async def list_transactions(
+    page: int = 1, limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    offset = (page - 1) * limit
+    result = await db.execute(
+        select(CreditTransaction)
+        .options(joinedload(CreditTransaction.candidate))
+        .order_by(CreditTransaction.created_at.desc())
+        .offset(offset).limit(limit)
+    )
+    total = await db.execute(select(func.count(CreditTransaction.id)))
+    return {
+        "transactions": [
+            {
+                "id": str(t.id),
+                "candidate_id": str(t.candidate_id),
+                "candidate_name": t.candidate.full_name if t.candidate else None,
+                "candidate_email": t.candidate.email if t.candidate else None,
+                "type": t.type,
+                "amount": t.amount,
+                "balance_after": t.balance_after,
+                "reference": t.reference,
+                "description": t.description,
+                "created_at": t.created_at.isoformat(),
+            }
+            for t in result.unique().scalars().all()
+        ],
+        "total": total.scalar(),
+        "page": page, "limit": limit,
+    }
 
 # ─── Revenue ─────────────────────────────────────────────────────
 
@@ -461,6 +538,81 @@ async def create_credit_package(
     await db.commit()
     await db.refresh(pkg)
     return {"id": str(pkg.id), "name": pkg.name, "credits": pkg.credits, "price_ghs": float(pkg.price_ghs)}
+
+# ─── System Settings ────────────────────────────────────────────
+
+@router.post("/system/reset")
+async def reset_database(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    """Deletes all data from all tables, then re-creates only the admin account."""
+
+    # Delete in correct dependency order (children first)
+    await db.execute(text("DELETE FROM campaign_logs"))
+    await db.execute(text("DELETE FROM campaigns"))
+    await db.execute(text("DELETE FROM credit_transactions"))
+    await db.execute(text("DELETE FROM sender_ids"))
+    await db.execute(text("DELETE FROM student_directories"))
+    await db.execute(text("DELETE FROM candidates"))
+    await db.execute(text("DELETE FROM credit_packages"))
+    await db.execute(text("DELETE FROM institutions"))
+    await db.commit()
+
+    # Re-seed a minimal institution and admin candidate (no dummy data)
+    inst = Institution(name="Default Institution", slug="default", country="Ghana", is_active=True)
+    db.add(inst)
+    await db.flush()
+
+    admin_candidate = Candidate(
+        institution_id=inst.id,
+        full_name="Platform Admin",
+        email=settings.ADMIN_EMAIL,
+        phone="0240000000",
+        position="Super Administrator",
+        hashed_password=hash_password(settings.ADMIN_PASSWORD),
+        credits_balance=10000,
+        is_active=True,
+        is_verified=True
+    )
+    db.add(admin_candidate)
+    await db.commit()
+
+    return {"message": "Database reset complete. All data cleared. Admin account preserved."}
+
+# ─── Manual Credit Adjustment ─────────────────────────────────────
+
+@router.put("/candidates/{candidate_id}/credits")
+async def adjust_candidate_credits(
+    candidate_id: uuid.UUID,
+    amount: int = Body(...),
+    reason: str = Body(""),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(404, "Candidate not found")
+
+    txn_type = "purchase" if amount > 0 else "deduction"
+    new_balance = candidate.credits_balance + amount
+    if new_balance < 0:
+        raise HTTPException(400, "Insufficient credits — deduction exceeds balance")
+
+    candidate.credits_balance = new_balance
+
+    txn = CreditTransaction(
+        candidate_id=candidate_id,
+        type=txn_type,
+        amount=abs(amount),
+        balance_after=new_balance,
+        reference=f"admin-{uuid.uuid4().hex[:8]}",
+        description=reason or f"Admin {txn_type}",
+    )
+    db.add(txn)
+    await db.commit()
+    return {"id": str(candidate_id), "credits_balance": new_balance, "type": txn_type, "amount": abs(amount)}
 
 # ─── All Campaigns (read-only) ──────────────────────────────────
 

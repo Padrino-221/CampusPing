@@ -31,7 +31,7 @@ class CreditTransaction(Base):
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # 'purchase', 'deduction', 'refund', 'pending'
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     balance_after: Mapped[int] = mapped_column(Integer, nullable=False)
-    reference: Mapped[str] = mapped_column(String, nullable=True)   # payment gateway ref or campaign ID
+    reference: Mapped[str] = mapped_column(String, nullable=True, index=True)   # payment gateway ref or campaign ID
     description: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 

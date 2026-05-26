@@ -3,13 +3,13 @@ export default function Stepper({ steps, current }) {
     <div className="flex items-center gap-2">
       {steps.map((label, i) => (
         <div key={label} className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${
             i <= current ? 'bg-primary text-white' : 'bg-gray-100 text-text-muted'
           }`}>
             {i + 1}
           </div>
-          <span className={`text-xs font-bold ${i <= current ? 'text-text-primary' : 'text-text-muted'}`}>{label}</span>
-          {i < steps.length - 1 && <div className="w-8 h-px bg-gray-200" />}
+          <span className={`text-xs font-bold hidden sm:inline ${i <= current ? 'text-text-primary' : 'text-text-muted'}`}>{label}</span>
+          {i < steps.length - 1 && <div className="w-8 h-px bg-gray-200 hidden sm:block" />}
         </div>
       ))}
     </div>

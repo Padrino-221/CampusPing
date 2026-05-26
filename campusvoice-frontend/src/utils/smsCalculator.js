@@ -15,13 +15,15 @@ function getGsm7Length(message) {
 export function calculateSmsUnits(message) {
   if (!message) return { units: 0, remaining: 0, isUnicode: false };
   const isUnicode = detectUnicode(message);
-  const length = isUnicode ? message.length : getGsm7Length(message);
 
   if (isUnicode) {
+    const length = [...message].reduce((acc, c) => acc + (c.length === 2 ? 2 : 1), 0);
     if (length <= 70) return { units: 1, remaining: 70 - length, isUnicode: true };
     const parts = Math.ceil(length / 67);
     return { units: parts, remaining: parts * 67 - length, isUnicode: true };
   }
+
+  const length = getGsm7Length(message);
   if (length <= 160) return { units: 1, remaining: 160 - length, isUnicode: false };
   const parts = Math.ceil(length / 153);
   return { units: parts, remaining: parts * 153 - length, isUnicode: false };

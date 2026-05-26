@@ -4,8 +4,8 @@ import { formatNumber } from '../../utils/formatters';
 import { Funnel, Users } from '@phosphor-icons/react';
 
 export default function AudienceFilter({ institutionId, onFilterChange }) {
-  const [options, setOptions] = useState({ genders: [], levels: [], departments: [], faculties: [], halls: [] });
-  const [filters, setFilters] = useState({ gender: [], levels: [], departments: [], faculties: [], halls: [] });
+  const [options, setOptions] = useState({ genders: [], levels: [], departments: [], faculties: [] });
+  const [filters, setFilters] = useState({ gender: [], levels: [], departments: [], faculties: [] });
   const [audienceCount, setAudienceCount] = useState(0);
   const [counting, setCounting] = useState(false);
 
@@ -41,7 +41,6 @@ export default function AudienceFilter({ institutionId, onFilterChange }) {
     { key: 'levels', label: 'Level', options: options.levels },
     { key: 'departments', label: 'Department', options: options.departments },
     { key: 'faculties', label: 'Faculty', options: options.faculties },
-    { key: 'halls', label: 'Hall', options: options.halls },
   ];
 
   return (
@@ -62,7 +61,7 @@ export default function AudienceFilter({ institutionId, onFilterChange }) {
                   <button
                     key={opt}
                     onClick={() => toggle(key, opt)}
-                    className={`cursor-pointer px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
+                    className={`cursor-pointer px-4 py-2.5 text-sm font-semibold rounded-full border transition-all ${
                       active ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20' : 'bg-white text-text-muted border-gray-200 hover:border-primary'
                     }`}
                   >

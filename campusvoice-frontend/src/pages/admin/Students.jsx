@@ -1,36 +1,54 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { listStudents, importStudents, deleteStudent, listInstitutions, downloadStudentTemplate } from '../../api/admin';
+import { getFilterOptions } from '../../api/students';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Table from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
-import { Upload, MagnifyingGlass, Trash, Download } from '@phosphor-icons/react';
+import { Upload, Trash, Download } from '@phosphor-icons/react';
 import toast from 'react-hot-toast';
 
 export default function AdminStudents() {
   const [students, setStudents] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
   const [institutions, setInstitutions] = useState([]);
   const [selectedInst, setSelectedInst] = useState('');
+  const [gender, setGender] = useState('');
+  const [level, setLevel] = useState('');
+  const [department, setDepartment] = useState('');
+  const [faculty, setFaculty] = useState('');
+  const [filterOptions, setFilterOptions] = useState(null);
   const [importing, setImporting] = useState(false);
 
-  const fetch = () => {
+  const fetch = useCallback(() => {
     const params = { page, limit: 20 };
-    if (search) params.search = search;
     if (selectedInst) params.institution_id = selectedInst;
+    if (gender) params.gender = gender;
+    if (level) params.level = level;
+    if (department) params.department = department;
+    if (faculty) params.faculty = faculty;
     listStudents(params).then(({ data }) => { setStudents(data.students); setTotal(data.total); }).catch(() => {});
-  };
+  }, [page, selectedInst, gender, level, department, faculty]);
 
-  useEffect(() => { fetch(); }, [page, selectedInst]);
+  useEffect(() => { fetch(); }, [fetch]);
+
   useEffect(() => {
     listInstitutions().then(({ data }) => setInstitutions(data)).catch(() => {});
   }, []);
 
-  const handleSearch = (e) => { e.preventDefault(); setPage(1); fetch(); };
+  useEffect(() => {
+    if (!selectedInst) { setFilterOptions(null); return; }
+    getFilterOptions(selectedInst).then(({ data }) => setFilterOptions(data)).catch((err) => {
+      toast.error('Failed to load filter options');
+    });
+  }, [selectedInst]);
+
+  const handleFilterChange = (setter) => (e) => {
+    setter(e.target.value);
+    setPage(1);
+  };
 
   const handleImport = async (e) => {
     const file = e.target.files[0];
@@ -69,7 +87,6 @@ export default function AdminStudents() {
     { key: 'level', label: 'Level' },
     { key: 'department', label: 'Department' },
     { key: 'faculty', label: 'Faculty' },
-    { key: 'hall', label: 'Hall' },
     {
       key: 'id', label: '', align: 'right',
       render: (_, row) => (
@@ -82,11 +99,16 @@ export default function AdminStudents() {
 
   return (
     <div className="space-y-5">
-      <form onSubmit={handleSearch} className="flex items-center gap-3">
-        <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or phone..." className="flex-1" />
-        <Select value={selectedInst} onChange={(e) => setSelectedInst(e.target.value)} placeholder="All institutions" options={institutions.map((i) => ({ value: i.id, label: i.name }))} />
-        <Button type="submit" icon={MagnifyingGlass}>Search</Button>
-      </form>
+      <div className="flex flex-wrap items-center gap-4">
+        <Select value={selectedInst} onChange={(e) => { setSelectedInst(e.target.value); setPage(1); setGender(''); setLevel(''); setDepartment(''); setFaculty(''); }} placeholder="All institutions" className="w-full sm:w-[200px]" options={institutions.map((i) => ({ value: i.id, label: i.name }))} />
+        <Select value={gender} onChange={handleFilterChange(setGender)} placeholder="Gender" className="w-full sm:w-[140px]" options={[
+          { value: 'male', label: 'Male' },
+          { value: 'female', label: 'Female' },
+        ]} />
+        <Select value={level} onChange={handleFilterChange(setLevel)} placeholder="Level" className="w-full sm:w-[140px]" options={[100, 200, 300, 400, 500, 600].map((v) => ({ value: v, label: `Level ${v}` }))} />
+        <Select value={department} onChange={handleFilterChange(setDepartment)} placeholder="Department" className="w-full sm:w-[200px]" options={(filterOptions?.departments ?? []).map((v) => ({ value: v, label: v }))} disabled={!selectedInst} />
+        <Select value={faculty} onChange={handleFilterChange(setFaculty)} placeholder="Faculty" className="w-full sm:w-[200px]" options={(filterOptions?.faculties ?? []).map((v) => ({ value: v, label: v }))} disabled={!selectedInst} />
+      </div>
 
       <Card title={`Student Directory (${total})`} action={
         <div className="flex gap-2">

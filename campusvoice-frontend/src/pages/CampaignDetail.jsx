@@ -137,8 +137,8 @@ export default function CampaignDetail() {
               />
             </div>
             <div className="flex gap-3">
-              <Button icon={FloppyDisk} loading={saving} onClick={handleSaveEdit} size="sm">{saving ? 'Saving...' : 'Save'}</Button>
-              <Button variant="outline" icon={X} onClick={() => setEditing(false)} size="sm">Cancel</Button>
+              <Button icon={FloppyDisk} loading={saving} onClick={handleSaveEdit}>{saving ? 'Saving...' : 'Save'}</Button>
+              <Button variant="outline" icon={X} onClick={() => setEditing(false)}>Cancel</Button>
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from fastapi import HTTPException, status
 
 from app.models.candidate import Candidate
@@ -13,36 +13,42 @@ async def get_balance(db: AsyncSession, candidate_id) -> int:
     return candidate.credits_balance if candidate else 0
 
 
-async def deduct_credits(db: AsyncSession, candidate_id, amount: int, campaign_id: str):
+async def deduct_credits(db: AsyncSession, candidate_id, amount: int, campaign_id: str) -> int:
     """
-    Atomically deducts credits from a candidate's balance.
-    Raises 402 if balance is insufficient.
+    Atomically deducts credits using a single UPDATE with a WHERE guard clause
+    to prevent double-spend concurrency exploits.
     """
-    result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
-    candidate = result.scalar_one_or_none()
+    stmt = (
+        update(Candidate)
+        .where(Candidate.id == candidate_id, Candidate.credits_balance >= amount)
+        .values(credits_balance=Candidate.credits_balance - amount)
+        .returning(Candidate.credits_balance)
+    )
+    result = await db.execute(stmt)
+    row = result.fetchone()
 
-    if not candidate:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found")
-
-    if candidate.credits_balance < amount:
+    if not row:
+        exists = await db.execute(select(Candidate.id).where(Candidate.id == candidate_id))
+        if not exists.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found")
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Insufficient credits. Required: {amount}, Available: {candidate.credits_balance}"
+            detail=f"Insufficient credits. Required: {amount}"
         )
 
-    candidate.credits_balance -= amount
+    new_balance = row[0]
 
     transaction = CreditTransaction(
         candidate_id=candidate_id,
         type="deduction",
         amount=-amount,
-        balance_after=candidate.credits_balance,
+        balance_after=new_balance,
         reference=str(campaign_id),
         description=f"Campaign dispatch: {amount} SMS units"
     )
     db.add(transaction)
     await db.commit()
-    return candidate.credits_balance
+    return new_balance
 
 
 async def add_credits(db: AsyncSession, candidate_id, amount: int, reference: str, description: str):

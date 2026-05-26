@@ -27,9 +27,6 @@ def build_filter_conditions(institution_id, filters: dict):
         if filters.get("faculties"):
             conditions.append(StudentDirectory.faculty.in_(filters["faculties"]))
             
-        if filters.get("halls"):
-            conditions.append(StudentDirectory.hall.in_(filters["halls"]))
-            
     return conditions
 
 

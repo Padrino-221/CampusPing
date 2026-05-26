@@ -3,8 +3,8 @@ import { useSmsCalculator } from '../../utils/smsCalculator';
 import { Warning, DeviceMobile } from '@phosphor-icons/react';
 import Input from '../ui/Input';
 
-export default function MessageComposer({ onChange }) {
-  const [message, setMessage] = useState('');
+export default function MessageComposer({ onChange, initial = '' }) {
+  const [message, setMessage] = useState(initial);
   const { units, remaining, isUnicode } = useSmsCalculator(message);
 
   const handleChange = (e) => {

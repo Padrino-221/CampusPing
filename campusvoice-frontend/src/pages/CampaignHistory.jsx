@@ -34,51 +34,70 @@ export default function CampaignHistory() {
         action={<Button icon={PlusCircle} onClick={() => navigate('/campaigns/new')}>New Campaign</Button>}
       />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {['', 'draft', 'queued', 'sending', 'completed', 'failed'].map((s) => (
           <button key={s} onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 text-xs rounded-xl border cursor-pointer transition-all ${
+            className={`px-4 py-2.5 text-sm rounded-xl border cursor-pointer transition-all ${
               filter === s ? 'bg-primary text-white border-primary' : 'bg-white text-text-muted border-gray-200 hover:border-primary'
             }`}
           >{s || 'All'}</button>
         ))}
       </div>
 
-      <Card className="p-0 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Title</th>
-              <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Recipients</th>
-              <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Credits</th>
-              <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Status</th>
-              <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Date</th>
-              <th className="text-right p-4 text-xs font-medium text-text-muted uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((c) => (
-              <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                <td className="p-4 font-bold text-text-primary">{c.title || 'Untitled'}</td>
-                <td className="p-4 text-text-muted">{formatNumber(c.recipient_count)}</td>
-                <td className="p-4 text-text-muted">{formatNumber(c.credits_used)}</td>
-                <td className="p-4"><Badge variant={statusVariant[c.status] || 'default'}>{c.status}</Badge></td>
-                <td className="p-4 text-text-muted text-xs">{formatDate(c.created_at)}</td>
-                <td className="p-4 text-right">
-                  <button onClick={() => navigate(`/campaigns/${c.id}`)} className="p-2 text-text-muted hover:text-primary rounded-xl hover:bg-blue-50 cursor-pointer">
-                    <Eye weight="duotone" size={16} />
-                  </button>
-                </td>
+      <Card className="p-0">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Title</th>
+                <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Recipients</th>
+                <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Credits</th>
+                <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Status</th>
+                <th className="text-left p-4 text-xs font-medium text-text-muted uppercase">Date</th>
+                <th className="text-right p-4 text-xs font-medium text-text-muted uppercase">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <ChartBar weight="duotone" size={32} className="mx-auto text-text-muted mb-2" />
-            <p className="text-sm text-text-muted">No campaigns found</p>
-          </div>
-        )}
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                  <td className="p-4 font-bold text-text-primary">{c.title || 'Untitled'}</td>
+                  <td className="p-4 text-text-muted">{formatNumber(c.recipient_count)}</td>
+                  <td className="p-4 text-text-muted">{formatNumber(c.credits_used)}</td>
+                  <td className="p-4"><Badge variant={statusVariant[c.status] || 'default'}>{c.status}</Badge></td>
+                  <td className="p-4 text-text-muted text-xs">{formatDate(c.created_at)}</td>
+                  <td className="p-4 text-right">
+                    <button onClick={() => navigate(`/campaigns/${c.id}`)} className="p-2 text-text-muted hover:text-primary rounded-xl hover:bg-blue-50 cursor-pointer">
+                      <Eye weight="duotone" size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {filtered.length === 0 && (
+            <div className="text-center py-12">
+              <ChartBar weight="duotone" size={32} className="mx-auto text-text-muted mb-2" />
+              <p className="text-sm text-text-muted">No campaigns found</p>
+            </div>
+          )}
+          {filtered.map((c) => (
+            <div key={c.id} className="p-4 space-y-3" onClick={() => navigate(`/campaigns/${c.id}`)}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-bold text-text-primary text-sm leading-snug">{c.title || 'Untitled'}</p>
+                <Badge variant={statusVariant[c.status] || 'default'}>{c.status}</Badge>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-text-muted">
+                <span>{formatNumber(c.recipient_count)} recipients</span>
+                <span>{formatDate(c.created_at)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </Card>
 
       <Pagination page={page} total={total} onChange={setPage} />

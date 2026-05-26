@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { listCampaigns } from '../api/campaigns';
 import { getBalance } from '../api/credits';
-import { getRevenue, listAllCampaigns } from '../api/admin';
-import { PlusCircle, PaperPlane, Users, Coins, TrendUp, CurrencyCircleDollar, ChartBar, ArrowRight } from '@phosphor-icons/react';
+import { getRevenue, listAllCampaigns, getArkeselBalance } from '../api/admin';
+import { PlusCircle, PaperPlane, Users, Coins, TrendUp, CurrencyCircleDollar, ChartBar, Wallet, ArrowRight } from '@phosphor-icons/react';
 import CampaignCard from '../components/campaign/CampaignCard';
 import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
@@ -17,16 +17,20 @@ const statCardStyles = [
   { bg: 'stat-card-purple', iconColor: 'text-purple' },
   { bg: 'stat-card-orange', iconColor: 'text-amber-500' },
   { bg: 'stat-card-green', iconColor: 'text-emerald-500' },
+  { bg: 'stat-card-blue', iconColor: 'text-primary' },
+  { bg: 'stat-card-purple', iconColor: 'text-purple' },
 ];
 
 function StatCard({ icon: Icon, label, value, style }) {
   return (
-    <div className={`${style.bg} rounded-2xl p-5 sm:p-6 hover:-translate-y-0.5 transition-transform duration-200`}>
-      <div className="mb-3">
-        <Icon weight="duotone" size={24} className={style.iconColor} />
+    <div className={`${style.bg} rounded-2xl p-4 flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-200`}>
+      <div className={`p-3 rounded-xl ${style.bg}`}>
+        <Icon weight="duotone" size={22} className={style.iconColor} />
       </div>
-      <p className="text-2xl font-extrabold text-text-primary">{typeof value === 'number' ? formatNumber(value) : value}</p>
-      <p className="text-xs font-semibold text-text-muted mt-1">{label}</p>
+      <div className="min-w-0">
+        <p className="text-lg font-extrabold text-text-primary">{typeof value === 'number' ? formatNumber(value) : value}</p>
+        <p className="text-xs font-semibold text-text-muted">{label}</p>
+      </div>
     </div>
   );
 }
@@ -82,10 +86,12 @@ function CandidateDashboard({ candidate }) {
 function AdminDashboard() {
   const [revenue, setRevenue] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [arkesel, setArkesel] = useState(null);
 
   useEffect(() => {
     getRevenue().then(({ data }) => setRevenue(data)).catch(() => {});
     listAllCampaigns(1, 5).then(({ data }) => setCampaigns(data.campaigns || [])).catch(() => {});
+    getArkeselBalance().then(({ data }) => setArkesel(data)).catch(() => {});
   }, []);
 
   const stats = [
@@ -93,13 +99,17 @@ function AdminDashboard() {
     { label: 'Total Campaigns', value: revenue?.total_campaigns ?? 0, icon: PaperPlane },
     { label: 'Credits Sold', value: revenue?.total_credits_sold ?? 0, icon: CurrencyCircleDollar },
     { label: 'SMS Dispatched', value: revenue?.total_sms_dispatched ?? 0, icon: ChartBar },
+    ...(arkesel ? [
+      { label: 'Arkesel SMS Balance', value: arkesel.sms_balance, icon: Wallet },
+      { label: 'Arkesel Wallet', value: arkesel.main_balance, icon: Coins },
+    ] : []),
   ];
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Platform Overview"
-        description="Manage CampusVoice from here"
+        description="Manage CampusAlerts from here"
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
