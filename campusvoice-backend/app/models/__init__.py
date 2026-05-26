@@ -5,6 +5,7 @@ from app.models.student import StudentDirectory
 from app.models.sender_id import SenderID
 from app.models.campaign import Campaign, CampaignLog
 from app.models.credits import CreditPackage, CreditTransaction
+from app.models.setting import PlatformSetting
 
 __all__ = [
     "Base",
@@ -16,4 +17,5 @@ __all__ = [
     "CampaignLog",
     "CreditPackage",
     "CreditTransaction",
+    "PlatformSetting",
 ]

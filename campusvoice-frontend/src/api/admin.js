@@ -58,3 +58,8 @@ export const deleteCreditPackage = (id) => api.delete(`/api/admin/credit-package
 export const resetDatabase = () => api.post('/api/admin/system/reset');
 export const adjustCandidateCredits = (id, amount, reason) =>
   api.put(`/api/admin/candidates/${id}/credits`, { amount, reason });
+
+export const getPlatformSettings = () => api.get('/api/admin/system/settings');
+export const toggleMaintenance = (enabled, message) =>
+  api.put('/api/admin/system/maintenance', { enabled, message });
+export const getSystemHealth = () => api.get('/api/admin/system/health');

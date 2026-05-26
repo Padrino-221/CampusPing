@@ -2,6 +2,7 @@ import io
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Body
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, delete, text
 from sqlalchemy.orm import joinedload
@@ -14,6 +15,7 @@ from app.models.sender_id import SenderID
 from app.models.campaign import Campaign, CampaignLog
 from app.models.credits import CreditPackage, CreditTransaction
 from app.models.institution import Institution
+from app.models.setting import PlatformSetting
 from app.utils.phone import normalize_phone
 from app.utils.security import hash_password
 from app.config import settings
@@ -683,3 +685,84 @@ async def poll_delivery():
         return {"polled": len(pending), "updated": updated}
     finally:
         sync_db.close()
+
+
+# ─── Platform Settings (Maintenance Mode) ────────────────────────
+
+@router.get("/system/settings")
+async def get_platform_settings(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    stmt = select(PlatformSetting)
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    return {row.key: row.value for row in rows}
+
+
+class MaintenanceToggle(BaseModel):
+    enabled: bool
+    message: str = ""
+
+@router.put("/system/maintenance")
+async def toggle_maintenance(
+    body: MaintenanceToggle,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    setting = await db.get(PlatformSetting, "maintenance_enabled")
+    if setting:
+        setting.value = "true" if body.enabled else ""
+    else:
+        db.add(PlatformSetting(key="maintenance_enabled", value="true" if body.enabled else ""))
+
+    msg_setting = await db.get(PlatformSetting, "maintenance_message")
+    if msg_setting:
+        msg_setting.value = body.message
+    else:
+        db.add(PlatformSetting(key="maintenance_message", value=body.message))
+
+    await db.commit()
+    return {"enabled": body.enabled, "message": body.message}
+
+
+# ─── System Health ───────────────────────────────────────────────
+
+@router.get("/system/health")
+async def system_health(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    from app.database import get_sync_db
+    db_status = "healthy"
+    try:
+        sync_db = get_sync_db()
+        sync_db.execute(text("SELECT 1"))
+        sync_db.close()
+    except Exception:
+        db_status = "unhealthy"
+
+    sms_balance = None
+    try:
+        bal = await arkesel.check_balance()
+        if bal.get("status") == "success":
+            sms_balance = bal.get("data", {}).get("sms_balance", 0)
+    except Exception:
+        sms_balance = None
+
+    counts = {}
+    for table, model_cls in [
+        ("candidates", Candidate),
+        ("students", StudentDirectory),
+        ("campaigns", Campaign),
+        ("institutions", Institution),
+        ("sender_ids", SenderID),
+    ]:
+        c = await db.execute(select(func.count()).select_from(model_cls))
+        counts[table] = c.scalar()
+
+    return {
+        "database": db_status,
+        "sms_balance": sms_balance,
+        "counts": counts,
+    }

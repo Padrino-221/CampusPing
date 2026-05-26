@@ -8,6 +8,7 @@ from app.database import get_db
 from app.config import settings
 from app.models.candidate import Candidate
 from app.models.institution import Institution
+from app.models.setting import PlatformSetting
 from app.schemas.candidate import (
     CandidateCreate,
     CandidateLogin,
@@ -93,6 +94,17 @@ async def login(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email credentials or password"
         )
+
+    # Check maintenance mode (skip for admin)
+    if candidate.email != settings.ADMIN_EMAIL:
+        maint = await db.get(PlatformSetting, "maintenance_enabled")
+        if maint and maint.value == "true":
+            msg_setting = await db.get(PlatformSetting, "maintenance_message")
+            detail = msg_setting.value if msg_setting and msg_setting.value else "Platform is under maintenance. Please try again later."
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=detail,
+            )
     
     if not candidate.is_active:
         raise HTTPException(
