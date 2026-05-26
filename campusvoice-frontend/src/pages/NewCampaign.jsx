@@ -101,7 +101,7 @@ export default function NewCampaign() {
         title: camp.title,
         recipients: result.recipient_count || camp.recipient_count,
         credits: result.credits_used || creditsNeeded,
-        status: schedule ? 'scheduled' : 'queued',
+        status: result.status || (schedule ? 'scheduled' : 'queued'),
         scheduledAt: schedule ? scheduledAt : null,
       });
     } catch (err) {
@@ -150,11 +150,15 @@ export default function NewCampaign() {
             <Check weight="bold" size={32} className="text-green-500" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-text-primary">Campaign {receipt.status === 'scheduled' ? 'Scheduled' : 'Queued'}!</h2>
+            <h2 className="text-xl font-extrabold text-text-primary">
+              {receipt.status === 'scheduled' ? 'Campaign Scheduled!' : receipt.status === 'completed' ? 'Campaign Sent!' : 'Campaign Queued!'}
+            </h2>
             <p className="text-sm text-text-muted mt-1">
               {receipt.status === 'scheduled'
                 ? `Your campaign will be sent on ${formatDate(receipt.scheduledAt)}`
-                : 'Your campaign is being dispatched to recipients'}
+                : receipt.status === 'completed'
+                  ? 'Your campaign has been sent successfully'
+                  : 'Your campaign is being dispatched to recipients'}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-2xl p-4">

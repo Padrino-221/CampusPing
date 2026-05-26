@@ -1,7 +1,8 @@
 import uuid
+import asyncio
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel
@@ -14,7 +15,7 @@ from app.models.sender_id import SenderID
 from app.services.filter_engine import get_filtered_count_async
 from app.services.credits import deduct_credits, add_credits
 from app.utils.sms import calculate_sms_units
-from app.tasks.send_campaign import dispatch_campaign, run_dispatch_sync
+from app.tasks.send_campaign import run_dispatch_sync
 
 router = APIRouter(prefix="/api/campaigns", tags=["Campaigns"])
 
@@ -193,7 +194,6 @@ async def update_campaign(
 @router.post("/{campaign_id}/send")
 async def send_campaign(
     campaign_id: uuid.UUID,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     candidate: Candidate = Depends(get_current_candidate)
 ):
@@ -208,7 +208,6 @@ async def send_campaign(
 
     credits_needed = campaign.credits_used
     if credits_needed <= 0:
-        # Recalculate in case it wasn't set
         count = await get_filtered_count_async(db, candidate.institution_id, campaign.filters or {})
         sms_units = calculate_sms_units(campaign.message)
         credits_needed = count * sms_units
@@ -218,25 +217,31 @@ async def send_campaign(
     # Deduct credits (raises 402 if insufficient)
     await deduct_credits(db, candidate.id, credits_needed, str(campaign_id))
 
-    # Queue the campaign
+    # Dispatch synchronously in a thread pool to avoid blocking the event loop
     campaign.status = "queued"
     await db.commit()
 
-    # Dispatch the background task
-    try:
-        dispatch_campaign.delay(str(campaign_id))
-    except Exception as e:
-        print(f"[Dispatch] Celery unavailable, using background task: {e}", flush=True)
-        background_tasks.add_task(run_dispatch_sync, str(campaign_id))
+    await asyncio.to_thread(run_dispatch_sync, str(campaign_id))
 
-    return {"message": "Campaign queued for dispatch", "campaign_id": str(campaign_id)}
+    # Re-fetch to get updated status and counts
+    result = await db.execute(
+        select(Campaign).where(Campaign.id == campaign_id, Campaign.candidate_id == candidate.id)
+    )
+    campaign = result.scalar_one_or_none()
+
+    return {
+        "message": "Campaign sent successfully",
+        "campaign_id": str(campaign_id),
+        "status": campaign.status if campaign else "unknown",
+        "recipient_count": campaign.recipient_count if campaign else 0,
+        "credits_used": campaign.credits_used if campaign else 0,
+    }
 
 
 @router.post("/{campaign_id}/schedule")
 async def schedule_campaign(
     campaign_id: uuid.UUID,
     scheduled_at: datetime,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     candidate: Candidate = Depends(get_current_candidate)
 ):
@@ -256,11 +261,14 @@ async def schedule_campaign(
     campaign.scheduled_at = scheduled_at
     await db.commit()
 
+    # Try Celery dispatch, fall back to sync (send immediately)
     try:
+        from app.tasks.send_campaign import dispatch_campaign
         dispatch_campaign.apply_async((str(campaign_id),), eta=scheduled_at)
     except Exception as e:
         print(f"[Dispatch] Celery unavailable for schedule, sending immediately: {e}", flush=True)
-        background_tasks.add_task(run_dispatch_sync, str(campaign_id))
+        await asyncio.to_thread(run_dispatch_sync, str(campaign_id))
+
     return {"message": f"Campaign scheduled for {scheduled_at.isoformat()}", "campaign_id": str(campaign_id)}
 
 
