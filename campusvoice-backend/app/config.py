@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     SYNC_DATABASE_URL: str
 
     # Cache/Broker
-    REDIS_URL: str
+    REDIS_URL: str = ""
 
     # SMS Gateway
     ARKESEL_API_KEY: str
