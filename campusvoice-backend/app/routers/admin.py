@@ -641,3 +641,45 @@ async def list_all_campaigns(
         "total": total.scalar(),
         "page": page, "limit": limit,
     }
+
+
+@router.get("/poll-delivery")
+async def poll_delivery():
+    """
+    Public endpoint to poll Arkesel for delivery reports of pending "sent" messages.
+    Call via cron-job.org every 5 minutes to replace Celery Beat.
+    """
+    from app.database import get_sync_db
+    from app.models.campaign import CampaignLog
+
+    sync_db = get_sync_db()
+    try:
+        pending = sync_db.query(CampaignLog).filter(
+            CampaignLog.status == "sent",
+            CampaignLog.arkesel_msg_id.isnot(None)
+        ).limit(500).all()
+
+        updated = 0
+        for log in pending:
+            try:
+                report = arkesel.get_delivery_report_sync(log.arkesel_msg_id)
+                data = report.get("data", {})
+                status = data.get("status") if isinstance(data, dict) else None
+                if status:
+                    status = status.lower()
+                if status == "delivered":
+                    log.status = "delivered"
+                    log.delivered_at = datetime.utcnow()
+                    updated += 1
+                elif status in ("failed", "rejected", "undelivered"):
+                    log.status = "failed"
+                    log.error_message = f"Provider: {status}"
+                    updated += 1
+            except Exception as e:
+                print(f"[Poll] Failed for log {log.id}: {e}")
+
+        if updated:
+            sync_db.commit()
+        return {"polled": len(pending), "updated": updated}
+    finally:
+        sync_db.close()
