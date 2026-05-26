@@ -114,7 +114,7 @@ async def login(
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         expires=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=is_prod,
-        samesite="strict",
+        samesite="none" if is_prod else "lax",
         path="/"
     )
     
@@ -125,7 +125,7 @@ async def login(
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         expires=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         secure=is_prod,
-        samesite="strict",
+        samesite="none" if is_prod else "lax",
         path="/"
     )
     
@@ -238,7 +238,7 @@ async def refresh(
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         expires=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=is_prod,
-        samesite="strict",
+        samesite="none" if is_prod else "lax",
         path="/"
     )
     
@@ -335,7 +335,7 @@ async def google_auth(
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         expires=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         secure=is_prod,
-        samesite="strict",
+        samesite="none" if is_prod else "lax",
         path="/"
     )
 
@@ -346,7 +346,7 @@ async def google_auth(
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         expires=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         secure=is_prod,
-        samesite="strict",
+        samesite="none" if is_prod else "lax",
         path="/"
     )
 
