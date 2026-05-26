@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from app.config import settings
-from app.database import AsyncSessionLocal
+from app.database import AsyncSessionLocal, sync_engine, Base
 from app.models.institution import Institution
 from app.models.candidate import Candidate
 from app.utils.security import hash_password
@@ -16,10 +16,15 @@ app = FastAPI(
 )
 
 # CORS Configuration
-# Allow all local network origins in development.
+origins = [settings.FRONTEND_URL]
+if settings.FRONTEND_LAN_URL:
+    origins.append(settings.FRONTEND_LAN_URL)
+if settings.ENVIRONMENT == "development":
+    origins.extend(["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?",
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +53,7 @@ async def seed_admin():
     On application startup, seed the super admin candidate and a default institution
     if they do not already exist. No dummy data is created.
     """
+    Base.metadata.create_all(bind=sync_engine)
     async with AsyncSessionLocal() as session:
         # Check if admin already exists
         stmt = select(Candidate).where(Candidate.email == settings.ADMIN_EMAIL)
