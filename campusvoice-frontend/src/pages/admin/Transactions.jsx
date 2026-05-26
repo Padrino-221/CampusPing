@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp } from '@phosphor-icons/react';
 
 const typeStyles = {
   purchase: { label: 'Purchase', variant: 'success' },
+  completed: { label: 'Completed', variant: 'success' },
   deduction: { label: 'Deduction', variant: 'danger' },
   refund: { label: 'Refund', variant: 'warning' },
   pending: { label: 'Pending', variant: 'warning' },
@@ -57,8 +58,8 @@ export default function AdminTransactions() {
                         <Badge variant={style.variant}>{style.label}</Badge>
                       </td>
                       <td className="py-3 px-2 text-right">
-                        <span className={`inline-flex items-center gap-1 font-semibold ${t.type === 'purchase' ? 'text-green-500' : 'text-coral'}`}>
-                          {t.type === 'purchase' ? <ArrowUp weight="bold" size={12} /> : <ArrowDown weight="bold" size={12} />}
+                        <span className={`inline-flex items-center gap-1 font-semibold ${t.type === 'purchase' || t.type === 'completed' ? 'text-green-500' : 'text-coral'}`}>
+                          {t.type === 'purchase' || t.type === 'completed' ? <ArrowUp weight="bold" size={12} /> : <ArrowDown weight="bold" size={12} />}
                           {formatNumber(Math.abs(t.amount))}
                         </span>
                       </td>

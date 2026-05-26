@@ -15,3 +15,4 @@ celery_worker*
 *.pyd
 *.ico
 .DS_Store
+Docs/
