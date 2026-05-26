@@ -21,6 +21,9 @@ if settings.FRONTEND_LAN_URL:
     origins.append(settings.FRONTEND_LAN_URL)
 if settings.CORS_ORIGINS:
     origins.extend([o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()])
+# Always add CF Pages URL for production deployments
+if settings.ENVIRONMENT != "development":
+    origins.append("https://campusalerts.pages.dev")
 if settings.ENVIRONMENT == "development":
     origins.extend(["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"])
 
