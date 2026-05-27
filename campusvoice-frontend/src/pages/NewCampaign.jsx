@@ -155,6 +155,7 @@ export default function NewCampaign() {
   const smsUnits = calculateSmsUnits(message).units;
   const creditsNeeded = smsUnits * audienceCount;
   const hasEnough = balance >= creditsNeeded;
+  const isPastSchedule = scheduledAt && new Date(scheduledAt) <= new Date();
 
   const getPayload = () => {
     if (source === 'contacts') {
@@ -478,9 +479,12 @@ export default function NewCampaign() {
             )}
 
             <Input label="Schedule (optional)" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+            {isPastSchedule && (
+              <p className="text-xs text-coral font-medium -mt-3">Selected date and time is in the past</p>
+            )}
 
             <div className="flex gap-3">
-              <Button variant="secondary" icon={Clock} loading={sending} disabled={sending || !scheduledAt || creditsNeeded === 0} onClick={() => handleSend(true)} className="flex-1">Schedule</Button>
+              <Button variant="secondary" icon={Clock} loading={sending} disabled={sending || !scheduledAt || isPastSchedule || creditsNeeded === 0} onClick={() => handleSend(true)} className="flex-1">Schedule</Button>
             </div>
             <Button icon={PaperPlane} loading={sending} disabled={sending || creditsNeeded === 0} onClick={() => handleSend(false)} className="w-full">{sending ? 'Sending...' : 'Send Now'}</Button>
           </div>
@@ -516,15 +520,22 @@ export default function NewCampaign() {
           {!pendingPurchase ? (
             <div className="space-y-3">
               {packages.map((pkg) => (
-                <div key={pkg.id} className="flex items-center justify-between p-4 rounded-2xl border border-gray-200 hover:border-primary transition-colors">
-                  <div>
+                <button
+                  key={pkg.id}
+                  onClick={() => handlePurchase(pkg)}
+                  disabled={purchasing !== null}
+                  className="cursor-pointer w-full flex items-center justify-between p-4 rounded-2xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="text-left">
                     <p className="text-sm font-bold text-text-primary">{pkg.name}</p>
                     <p className="text-xs text-text-muted">{formatNumber(pkg.credits)} credits — {formatCurrency(pkg.price_ghs)}</p>
                   </div>
-                  <Button size="sm" onClick={() => handlePurchase(pkg)} loading={purchasing === pkg.id}>
-                    Buy
-                  </Button>
-                </div>
+                  {purchasing === pkg.id ? (
+                    <SpinnerGap weight="duotone" size={18} className="animate-spin text-primary" />
+                  ) : (
+                    <span className="text-sm font-bold text-primary">{formatCurrency(pkg.price_ghs / pkg.credits)}/credit</span>
+                  )}
+                </button>
               ))}
             </div>
           ) : (
