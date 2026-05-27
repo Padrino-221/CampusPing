@@ -35,7 +35,7 @@ export default function CampaignHistory() {
       />
 
       <div className="flex gap-2 flex-wrap">
-        {['', 'draft', 'queued', 'sending', 'completed', 'failed'].map((s) => (
+        {['', 'draft', 'queued', 'completed', 'failed'].map((s) => (
           <button key={s} onClick={() => setFilter(s)}
             className={`px-4 py-2.5 text-sm rounded-xl border cursor-pointer transition-all ${
               filter === s ? 'bg-primary text-white border-primary' : 'bg-white text-text-muted border-gray-200 hover:border-primary'

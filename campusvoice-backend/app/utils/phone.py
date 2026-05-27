@@ -36,6 +36,18 @@ def normalize_phone(phone: str) -> str:
     return ""
 
 
+def to_international_format(phone: str) -> str:
+    """
+    Converts a local Ghanaian phone number (0XXXXXXXXX) to
+    international format (233XXXXXXXXX, no +).
+    Returns empty string if the number is invalid.
+    """
+    local = normalize_phone(phone)
+    if not local:
+        return ""
+    return "233" + local[1:]
+
+
 def chunk_list(lst: list, size: int = 100) -> list[list]:
     """
     Chunks a list into smaller sublists of a specified maximum size.

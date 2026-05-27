@@ -1,6 +1,6 @@
 import httpx
 from app.config import settings
-from app.utils.phone import normalize_phone, chunk_list
+from app.utils.phone import to_international_format, chunk_list
 
 ARKESEL_BASE_URL = "https://sms.arkesel.com/api/v2"
 
@@ -28,7 +28,7 @@ class ArkeselService:
         Asynchronously dispatches a bulk SMS to recipients.
         Automatically normalizes phones and chunks them in batches of 100.
         """
-        normalized_recipients = [normalize_phone(r) for r in recipients if r]
+        normalized_recipients = [to_international_format(r) for r in recipients if r]
         if not normalized_recipients:
             return {"status": "error", "message": "No valid recipients"}
 
@@ -115,7 +115,7 @@ class ArkeselService:
         """
         Synchronously dispatches bulk SMS (used by Celery workers).
         """
-        normalized_recipients = [normalize_phone(r) for r in recipients if r]
+        normalized_recipients = [to_international_format(r) for r in recipients if r]
         if not normalized_recipients:
             return {"status": "error", "message": "No valid recipients"}
 

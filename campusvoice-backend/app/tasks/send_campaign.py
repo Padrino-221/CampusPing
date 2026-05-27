@@ -1,6 +1,7 @@
 from app.tasks.celery_app import celery_app
 from app.services.arkesel import arkesel
 from app.services.filter_engine import get_filtered_students_sync
+from app.config import settings
 from app.utils.phone import normalize_phone, chunk_list
 from app.database import get_sync_db
 from app.models.campaign import Campaign, CampaignLog
@@ -34,7 +35,7 @@ def run_dispatch_sync(campaign_id: str):
 
         phones = list(phone_student_map.keys())
 
-        sender_name = "CampusAlerts"
+        sender_name = settings.ARKESEL_SENDER_ID
         if campaign.sender_id_ref:
             sender = db.query(SenderID).filter(SenderID.id == campaign.sender_id_ref).first()
             if sender and sender.status == "approved":
