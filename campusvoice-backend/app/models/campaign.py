@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import String, DateTime, ForeignKey, Integer, Text, Index
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -23,6 +23,7 @@ class Campaign(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     filters: Mapped[dict] = mapped_column(JSONB, nullable=True)  # Snapshot of filtering criteria
+    custom_recipients: Mapped[list] = mapped_column(ARRAY(String(20)), nullable=True)  # User-pasted phone numbers
     recipient_count: Mapped[int] = mapped_column(Integer, default=0)
     credits_used: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft, queued, sending, completed, failed

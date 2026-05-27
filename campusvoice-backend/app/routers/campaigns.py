@@ -27,6 +27,7 @@ class CampaignCreate(BaseModel):
     message: str
     sender_id_ref: Optional[uuid.UUID] = None
     filters: Optional[dict] = {}
+    custom_recipients: Optional[list[str]] = None
     scheduled_at: Optional[datetime] = None
 
 
@@ -35,6 +36,7 @@ class CampaignUpdate(BaseModel):
     message: Optional[str] = None
     sender_id_ref: Optional[uuid.UUID] = None
     filters: Optional[dict] = None
+    custom_recipients: Optional[list[str]] = None
     scheduled_at: Optional[datetime] = None
 
 
@@ -46,6 +48,7 @@ def campaign_to_dict(c: Campaign) -> dict:
         "title": c.title,
         "message": c.message,
         "filters": c.filters,
+        "custom_recipients": c.custom_recipients,
         "recipient_count": c.recipient_count,
         "credits_used": c.credits_used,
         "status": c.status,
@@ -77,7 +80,19 @@ async def create_campaign(
             )
 
     # Calculate audience count and credits estimate
-    recipient_count = await get_filtered_count_async(db, candidate.institution_id, body.filters or {})
+    if body.custom_recipients:
+        seen = set()
+        cleaned = []
+        for p in body.custom_recipients:
+            s = p.strip()
+            if s and s not in seen:
+                seen.add(s)
+                cleaned.append(s)
+        recipient_count = len(cleaned)
+        custom_recipients = cleaned
+    else:
+        recipient_count = await get_filtered_count_async(db, candidate.institution_id, body.filters or {})
+        custom_recipients = None
     sms_units = calculate_sms_units(body.message)
     credits_needed = recipient_count * sms_units
 
@@ -87,6 +102,7 @@ async def create_campaign(
         title=body.title,
         message=body.message,
         filters=body.filters or {},
+        custom_recipients=custom_recipients,
         recipient_count=recipient_count,
         credits_used=credits_needed,
         status="draft",
@@ -182,7 +198,21 @@ async def update_campaign(
         campaign.sender_id_ref = body.sender_id_ref
     if body.filters is not None:
         campaign.filters = body.filters
+        campaign.custom_recipients = None
         campaign.recipient_count = await get_filtered_count_async(db, candidate.institution_id, body.filters)
+        sms_units = calculate_sms_units(campaign.message)
+        campaign.credits_used = campaign.recipient_count * sms_units
+    if body.custom_recipients is not None:
+        seen = set()
+        cleaned = []
+        for p in body.custom_recipients:
+            s = p.strip()
+            if s and s not in seen:
+                seen.add(s)
+                cleaned.append(s)
+        campaign.custom_recipients = cleaned
+        campaign.filters = {}
+        campaign.recipient_count = len(cleaned)
         sms_units = calculate_sms_units(campaign.message)
         campaign.credits_used = campaign.recipient_count * sms_units
     if body.scheduled_at is not None:
@@ -210,7 +240,10 @@ async def send_campaign(
 
     credits_needed = campaign.credits_used
     if credits_needed <= 0:
-        count = await get_filtered_count_async(db, candidate.institution_id, campaign.filters or {})
+        if campaign.custom_recipients:
+            count = len(campaign.custom_recipients)
+        else:
+            count = await get_filtered_count_async(db, candidate.institution_id, campaign.filters or {})
         sms_units = calculate_sms_units(campaign.message)
         credits_needed = count * sms_units
         campaign.recipient_count = count

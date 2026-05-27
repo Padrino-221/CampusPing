@@ -3,18 +3,19 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { createCampaign, sendCampaign, scheduleCampaign, getCampaign, updateCampaign } from '../api/campaigns';
 import { listSenderIds } from '../api/senderIds';
-import { getBalance } from '../api/credits';
+import { getBalance, getPackages, purchaseCredits, verifyPayment } from '../api/credits';
 import AudienceFilter from '../components/campaign/AudienceFilter';
 import MessageComposer from '../components/campaign/MessageComposer';
 import SmsUnitCounter from '../components/campaign/SmsUnitCounter';
 import { calculateSmsUnits } from '../utils/smsCalculator';
-import { formatNumber, formatDate } from '../utils/formatters';
-import { ArrowLeft, ArrowRight, PaperPlane, Clock, Check, Coins, X } from '@phosphor-icons/react';
+import { formatNumber, formatDate, formatCurrency } from '../utils/formatters';
+import { ArrowLeft, ArrowRight, PaperPlane, Clock, Check, Coins, Users, AddressBook, CreditCard, SpinnerGap } from '@phosphor-icons/react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import Stepper from '../components/ui/Stepper';
 import Card from '../components/ui/Card';
+import Modal from '../components/ui/Modal';
 import toast from 'react-hot-toast';
 
 const steps = ['Audience', 'Message', 'Review & Send'];
@@ -26,8 +27,10 @@ export default function NewCampaign() {
   const editId = searchParams.get('id');
 
   const [step, setStep] = useState(0);
+  const [source, setSource] = useState('directory');
   const [filters, setFilters] = useState({});
   const [audienceCount, setAudienceCount] = useState(0);
+  const [contactsText, setContactsText] = useState('');
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
   const [senderIds, setSenderIds] = useState([]);
@@ -37,6 +40,13 @@ export default function NewCampaign() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [receipt, setReceipt] = useState(null);
+
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [packages, setPackages] = useState([]);
+  const [purchasing, setPurchasing] = useState(null);
+  const [pendingPurchase, setPendingPurchase] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
     listSenderIds().then(({ data }) => setSenderIds(data.filter((s) => s.status === 'approved'))).catch(() => {});
@@ -53,8 +63,12 @@ export default function NewCampaign() {
         setTitle(data.title || '');
         setMessage(data.message || '');
         setSelectedSenderId(data.sender_id_ref || '');
-        setFilters(data.filters || {});
-        if (data.filters) {
+        if (data.custom_recipients && data.custom_recipients.length > 0) {
+          setSource('contacts');
+          setContactsText(data.custom_recipients.join('\n'));
+          setAudienceCount(data.recipient_count || 0);
+        } else {
+          setFilters(data.filters || {});
           setAudienceCount(data.recipient_count || 0);
         }
       }).catch(() => {
@@ -64,19 +78,50 @@ export default function NewCampaign() {
     }
   }, [editId]);
 
+  const parseContacts = (text) => {
+    const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    const phones = [];
+    for (const line of lines) {
+      const parts = line.split(/[,;]+/).map((p) => p.trim()).filter((p) => p.length > 0);
+      phones.push(...parts);
+    }
+    return [...new Set(phones)];
+  };
+
+  useEffect(() => {
+    if (source === 'contacts') {
+      const contacts = parseContacts(contactsText);
+      setAudienceCount(contacts.length);
+    }
+  }, [contactsText, source]);
+
   const smsUnits = calculateSmsUnits(message).units;
   const creditsNeeded = smsUnits * audienceCount;
   const hasEnough = balance >= creditsNeeded;
 
-  const handleSend = async (schedule = false) => {
-    setSending(true);
-    try {
-      const payload = {
+  const getPayload = () => {
+    if (source === 'contacts') {
+      const contacts = parseContacts(contactsText);
+      return {
         title,
         message,
         sender_id_ref: selectedSenderId || undefined,
-        filters,
+        filters: {},
+        custom_recipients: contacts,
       };
+    }
+    return {
+      title,
+      message,
+      sender_id_ref: selectedSenderId || undefined,
+      filters,
+    };
+  };
+
+  const doSend = async (schedule = false) => {
+    setSending(true);
+    try {
+      const payload = getPayload();
 
       let camp;
       if (editId) {
@@ -110,15 +155,19 @@ export default function NewCampaign() {
     setSending(false);
   };
 
+  const handleSend = (schedule = false) => {
+    if (creditsNeeded > 0 && !hasEnough) {
+      setPendingAction(() => schedule ? doSend.bind(null, true) : doSend.bind(null, false));
+      openPayModal();
+      return;
+    }
+    doSend(schedule);
+  };
+
   const handleSaveDraft = async () => {
     setSending(true);
     try {
-      const payload = {
-        title,
-        message,
-        sender_id_ref: selectedSenderId || undefined,
-        filters,
-      };
+      const payload = getPayload();
 
       if (editId) {
         await updateCampaign(editId, payload);
@@ -132,6 +181,44 @@ export default function NewCampaign() {
       toast.error(err.response?.data?.detail || 'Failed to save draft');
     }
     setSending(false);
+  };
+
+  const openPayModal = () => {
+    getPackages().then(({ data }) => setPackages(data || [])).catch(() => {});
+    setPendingPurchase(null);
+    setPayModalOpen(true);
+  };
+
+  const handlePurchase = async (pkg) => {
+    setPurchasing(pkg.id);
+    try {
+      const { data } = await purchaseCredits(pkg.id);
+      setPendingPurchase({ reference: data.reference, packageName: data.package });
+      window.open(data.authorization_url, '_blank');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Purchase failed');
+    }
+    setPurchasing(null);
+  };
+
+  const handleVerify = async () => {
+    if (!pendingPurchase) return;
+    setVerifying(true);
+    try {
+      await verifyPayment(pendingPurchase.reference);
+      toast.success('Credits added!');
+      const { data } = await getBalance();
+      setBalance(data.balance);
+      setPayModalOpen(false);
+      setPendingPurchase(null);
+      if (pendingAction) {
+        pendingAction();
+        setPendingAction(null);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Verification failed. Try again.');
+    }
+    setVerifying(false);
   };
 
   if (loadingDraft) {
@@ -194,10 +281,61 @@ export default function NewCampaign() {
 
       <div className="card p-6 space-y-6">
         {step === 0 && (
-          <AudienceFilter
-            institutionId={candidate?.institution_id}
-            onFilterChange={(f, c) => { setFilters(f); setAudienceCount(c); }}
-          />
+          <div className="space-y-5">
+            <div className="flex items-center gap-2">
+              <Users weight="duotone" size={18} className="text-primary" />
+              <h3 className="font-bold text-text-primary">Target Audience</h3>
+            </div>
+
+            <div className="flex gap-2 bg-gray-50 rounded-2xl p-1.5">
+              <button
+                onClick={() => setSource('directory')}
+                className={`cursor-pointer flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  source === 'directory' ? 'bg-white text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <Users weight="duotone" size={16} />
+                Student Directory
+              </button>
+              <button
+                onClick={() => setSource('contacts')}
+                className={`cursor-pointer flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  source === 'contacts' ? 'bg-white text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <AddressBook weight="duotone" size={16} />
+                My Contacts
+              </button>
+            </div>
+
+            {source === 'directory' ? (
+              <AudienceFilter
+                institutionId={candidate?.institution_id}
+                onFilterChange={(f, c) => { setFilters(f); setAudienceCount(c); }}
+              />
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-text-muted uppercase tracking-wide">
+                  Paste Phone Numbers
+                </p>
+                <p className="text-xs text-text-muted">
+                  One number per line, or comma-separated. Ghanaian numbers (e.g. 024XXXXXXX) supported.
+                </p>
+                <textarea
+                  value={contactsText}
+                  onChange={(e) => setContactsText(e.target.value)}
+                  placeholder="0241234567&#10;0247654321&#10;0551234567, 0549876543"
+                  className="w-full h-40 px-4 py-3 text-sm rounded-2xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none resize-y transition-all"
+                />
+                <div className="stat-card-blue rounded-2xl p-5 text-center">
+                  <AddressBook weight="duotone" size={24} className="mx-auto text-primary mb-2" />
+                  <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Total Contacts</p>
+                  <p className="text-4xl font-extrabold text-primary">{formatNumber(audienceCount)}</p>
+                  <p className="text-xs font-medium text-text-muted mt-1">phone numbers parsed</p>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {step === 1 && (
@@ -249,12 +387,9 @@ export default function NewCampaign() {
             <Input label="Schedule (optional)" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
 
             <div className="flex gap-3">
-              {!hasEnough && (
-                <Button variant="outline" onClick={() => navigate('/credits')} className="flex-1 !border-gold !text-gold hover:!bg-gold/10">Buy Credits</Button>
-              )}
-              <Button variant="secondary" icon={Clock} loading={sending} disabled={sending || !scheduledAt || (!hasEnough && creditsNeeded > 0)} onClick={() => handleSend(true)} className="flex-1">Schedule</Button>
+              <Button variant="secondary" icon={Clock} loading={sending} disabled={sending || !scheduledAt || creditsNeeded === 0} onClick={() => handleSend(true)} className="flex-1">Schedule</Button>
             </div>
-            <Button icon={PaperPlane} loading={sending} disabled={creditsNeeded === 0} onClick={() => handleSend(false)} className="w-full">{sending ? 'Sending...' : 'Send Now'}</Button>
+            <Button icon={PaperPlane} loading={sending} disabled={sending || creditsNeeded === 0} onClick={() => handleSend(false)} className="w-full">{sending ? 'Sending...' : 'Send Now'}</Button>
           </div>
         )}
       </div>
@@ -269,11 +404,55 @@ export default function NewCampaign() {
           {step < 2 && (
             <Button variant="ghost" disabled={sending} onClick={handleSaveDraft}>Save Draft</Button>
           )}
-          {step < 2 && (
+          {step === 0 && (
             <Button icon={ArrowRight} onClick={() => setStep(step + 1)} className="ml-auto">Next</Button>
+          )}
+          {step === 1 && (
+            <Button icon={ArrowRight} disabled={!message.trim()} onClick={() => { if (!message.trim()) { toast.error('Write a message before proceeding'); return; } setStep(step + 1); }} className="ml-auto">Next</Button>
           )}
         </div>
       </div>
+
+      <Modal isOpen={payModalOpen} onClose={() => { setPayModalOpen(false); setPendingAction(null); }} title="Buy Credits">
+        <div className="space-y-4">
+          <p className="text-sm text-text-muted">
+            You need <strong className="text-text-primary">{formatNumber(creditsNeeded)} credits</strong> to send this campaign.
+            Your balance is <strong className="text-text-primary">{formatNumber(balance)} credits</strong>.
+          </p>
+
+          {!pendingPurchase ? (
+            <div className="space-y-3">
+              {packages.map((pkg) => (
+                <div key={pkg.id} className="flex items-center justify-between p-4 rounded-2xl border border-gray-200 hover:border-primary transition-colors">
+                  <div>
+                    <p className="text-sm font-bold text-text-primary">{pkg.name}</p>
+                    <p className="text-xs text-text-muted">{formatNumber(pkg.credits)} credits — {formatCurrency(pkg.price_ghs)}</p>
+                  </div>
+                  <Button size="sm" onClick={() => handlePurchase(pkg)} loading={purchasing === pkg.id}>
+                    Buy
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4 text-center">
+              <div className="p-4 rounded-2xl bg-blue-50">
+                <p className="text-sm font-medium text-text-primary mb-1">Payment initiated for {pendingPurchase.packageName}</p>
+                <p className="text-xs text-text-muted">Complete payment in the new tab, then click below.</p>
+              </div>
+              <Button onClick={handleVerify} loading={verifying} className="w-full" icon={SpinnerGap}>
+                {verifying ? 'Verifying...' : "I've Paid — Verify"}
+              </Button>
+            </div>
+          )}
+
+          <div className="pt-2">
+            <Button variant="ghost" onClick={() => { setPayModalOpen(false); setPendingAction(null); }} className="w-full text-sm">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

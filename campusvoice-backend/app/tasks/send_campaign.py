@@ -2,7 +2,7 @@ from app.tasks.celery_app import celery_app
 from app.services.arkesel import arkesel
 from app.services.filter_engine import get_filtered_students_sync
 from app.config import settings
-from app.utils.phone import normalize_phone, chunk_list
+from app.utils.phone import normalize_phone, to_international_format, chunk_list
 from app.database import get_sync_db
 from app.models.campaign import Campaign, CampaignLog
 from app.models.credits import CreditTransaction
@@ -26,14 +26,21 @@ def run_dispatch_sync(campaign_id: str):
         campaign.sent_at = datetime.utcnow()
         db.commit()
 
-        students = get_filtered_students_sync(db, campaign.candidate.institution_id, campaign.filters)
-        phone_student_map = {}
-        for student in students:
-            norm_phone = normalize_phone(student.phone)
-            if norm_phone:
-                phone_student_map[norm_phone] = student.id
-
-        phones = list(phone_student_map.keys())
+        if campaign.custom_recipients:
+            phones = []
+            for raw in campaign.custom_recipients:
+                norm = to_international_format(raw)
+                if norm:
+                    phones.append(norm)
+            phone_student_map = {p: None for p in phones}
+        else:
+            students = get_filtered_students_sync(db, campaign.candidate.institution_id, campaign.filters)
+            phone_student_map = {}
+            for student in students:
+                norm_phone = normalize_phone(student.phone)
+                if norm_phone:
+                    phone_student_map[norm_phone] = student.id
+            phones = list(phone_student_map.keys())
 
         sender_name = settings.ARKESEL_SENDER_ID
         if campaign.sender_id_ref:
