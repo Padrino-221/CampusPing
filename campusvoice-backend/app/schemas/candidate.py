@@ -28,6 +28,7 @@ class CandidateResponse(CandidateBase):
     credits_balance: int
     is_active: bool
     is_verified: bool
+    is_superadmin: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

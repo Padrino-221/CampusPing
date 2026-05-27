@@ -99,7 +99,8 @@ async def seed_data():
                 hashed_password=hash_password(settings.ADMIN_PASSWORD),
                 credits_balance=10000,
                 is_active=True,
-                is_verified=True
+                is_verified=True,
+                is_superadmin=True,
             )
             session.add(admin_candidate)
             print(f"Super Admin seeded successfully with email: {settings.ADMIN_EMAIL}")

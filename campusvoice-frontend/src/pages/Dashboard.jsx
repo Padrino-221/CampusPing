@@ -147,7 +147,7 @@ function AdminDashboard() {
 
 export default function Dashboard() {
   const { candidate } = useAuthStore();
-  const isAdmin = candidate?.email === 'admin@campusvoice.com';
+  const isAdmin = candidate?.is_superadmin;
 
   return isAdmin ? <AdminDashboard /> : <CandidateDashboard candidate={candidate} />;
 }

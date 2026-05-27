@@ -82,7 +82,6 @@ export default function AdminStudents() {
 
   const columns = [
     { key: 'full_name', label: 'Name' },
-    { key: 'phone', label: 'Phone' },
     { key: 'gender', label: 'Gender' },
     { key: 'level', label: 'Level' },
     { key: 'department', label: 'Department' },

@@ -10,7 +10,7 @@ import { formatNumber } from '../../utils/formatters';
 export default function TopBar({ onToggleSidebar }) {
   const { candidate, logout } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = candidate?.email === 'admin@campusvoice.com';
+  const isAdmin = candidate?.is_superadmin;
   const [credits, setCredits] = useState(null);
   const [arkeselSms, setArkeselSms] = useState(null);
 

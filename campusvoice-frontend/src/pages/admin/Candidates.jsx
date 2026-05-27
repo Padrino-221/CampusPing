@@ -34,7 +34,7 @@ export default function AdminCandidates() {
   useEffect(() => { fetch(); }, [page]);
 
   const displayCredits = (c) => {
-    if (c.email === 'admin@campusvoice.com' && arkeselSms !== null) return arkeselSms;
+    if (c.is_superadmin && arkeselSms !== null) return arkeselSms;
     return c.credits_balance;
   };
 

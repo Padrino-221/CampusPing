@@ -16,7 +16,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [arkeselSms, setArkeselSms] = useState(null);
   const [institutions, setInstitutions] = useState([]);
-  const isAdmin = candidate?.email === 'admin@campusvoice.com';
+  const isAdmin = candidate?.is_superadmin;
   const [form, setForm] = useState({
     full_name: candidate?.full_name || '',
     phone: candidate?.phone || '',

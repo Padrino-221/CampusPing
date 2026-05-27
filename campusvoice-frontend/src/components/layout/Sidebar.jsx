@@ -25,7 +25,7 @@ const adminNavItems = [
 
 export default function Sidebar({ open, onClose }) {
   const { candidate } = useAuthStore();
-  const isAdmin = candidate?.email === 'admin@campusvoice.com';
+  const isAdmin = candidate?.is_superadmin;
   const navItems = isAdmin ? adminNavItems : candidateNavItems;
 
   const handleNav = () => { if (onClose) onClose(); };

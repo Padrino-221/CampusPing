@@ -58,6 +58,13 @@ async def register(
     schema: CandidateCreate,
     db: AsyncSession = Depends(get_db)
 ):
+    # Block registration with the super admin email
+    if schema.email == settings.ADMIN_EMAIL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email address is reserved"
+        )
+
     # Check if candidate email already exists
     stmt = select(Candidate).where(Candidate.email == schema.email)
     result = await db.execute(stmt)
@@ -87,7 +94,7 @@ async def register(
         credits_balance=0,
         is_active=True,
         # Auto-verify the default super admin email to make onboarding simpler
-        is_verified=True if schema.email == settings.ADMIN_EMAIL else False
+        is_verified=False
     )
     
     db.add(new_candidate)
@@ -113,8 +120,8 @@ async def login(
             detail="Invalid email credentials or password"
         )
 
-    # Check maintenance mode (skip for admin)
-    if candidate.email != settings.ADMIN_EMAIL:
+    # Check maintenance mode (skip for superadmin)
+    if not candidate.is_superadmin:
         maint = await db.get(PlatformSetting, "maintenance_enabled")
         if maint and maint.value == "true":
             msg_setting = await db.get(PlatformSetting, "maintenance_message")
@@ -346,8 +353,8 @@ async def google_auth(
             await db.commit()
             await db.refresh(candidate)
 
-    # Check maintenance mode (skip for admin)
-    if candidate.email != settings.ADMIN_EMAIL:
+    # Check maintenance mode (skip for superadmin)
+    if not candidate.is_superadmin:
         maint = await db.get(PlatformSetting, "maintenance_enabled")
         if maint and maint.value == "true":
             msg_setting = await db.get(PlatformSetting, "maintenance_message")

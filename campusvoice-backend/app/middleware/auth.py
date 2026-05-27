@@ -56,8 +56,8 @@ async def get_current_candidate(
             detail="Candidate account is currently deactivated",
         )
 
-    # Check maintenance mode (skip for admin)
-    if candidate.email != settings.ADMIN_EMAIL:
+    # Check maintenance mode (skip for superadmin)
+    if not candidate.is_superadmin:
         maint = await db.get(PlatformSetting, "maintenance_enabled")
         if maint and maint.value == "true":
             msg_setting = await db.get(PlatformSetting, "maintenance_message")
@@ -66,16 +66,16 @@ async def get_current_candidate(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=detail,
             )
-        
+
     return candidate
 
 async def require_admin(
     current_candidate: Candidate = Depends(get_current_candidate)
 ) -> Candidate:
     """
-    Dependency that restricts route access to Super Admins (matching the configured admin email).
+    Dependency that restricts route access to Super Admins.
     """
-    if current_candidate.email != settings.ADMIN_EMAIL:
+    if not current_candidate.is_superadmin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access restricted: Super Admin credentials required",

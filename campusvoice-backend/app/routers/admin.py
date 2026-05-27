@@ -110,7 +110,7 @@ async def list_candidates(
         "candidates": [
             {
                 "id": str(c.id), "full_name": c.full_name, "email": c.email,
-                "phone": c.phone, "position": c.position, "credits_balance": c.credits_balance,
+                "position": c.position, "credits_balance": c.credits_balance,
                 "is_active": c.is_active, "is_verified": c.is_verified,
                 "institution_id": str(c.institution_id), "created_at": c.created_at.isoformat(),
             }
@@ -248,13 +248,13 @@ async def list_students(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_admin)
 ):
+    limit = min(limit, 100)
     conditions = [StudentDirectory.is_active == True]
     if institution_id:
         conditions.append(StudentDirectory.institution_id == institution_id)
     if search:
         conditions.append(
-            StudentDirectory.full_name.ilike(f"%{search}%") |
-            StudentDirectory.phone.ilike(f"%{search}%")
+            StudentDirectory.full_name.ilike(f"%{search}%")
         )
     if gender:
         conditions.append(StudentDirectory.gender == gender)
@@ -275,7 +275,7 @@ async def list_students(
     return {
         "students": [
             {
-                "id": str(s.id), "full_name": s.full_name, "phone": s.phone,
+                "id": str(s.id), "full_name": s.full_name,
                 "gender": s.gender, "level": s.level, "department": s.department,
                 "faculty": s.faculty, "programme": s.programme,
                 "student_id": s.student_id, "is_active": s.is_active,
@@ -636,7 +636,8 @@ async def reset_database(
         hashed_password=hash_password(settings.ADMIN_PASSWORD),
         credits_balance=10000,
         is_active=True,
-        is_verified=True
+        is_verified=True,
+        is_superadmin=True,
     )
     db.add(admin_candidate)
     await db.commit()

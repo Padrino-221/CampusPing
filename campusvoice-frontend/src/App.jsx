@@ -44,8 +44,7 @@ function AppLayout({ children }) {
 
 function CandidateOnly({ children }) {
   const { candidate } = useAuthStore();
-  const isAdmin = candidate?.email === 'admin@campusvoice.com';
-  if (isAdmin) return <Navigate to="/dashboard" replace />;
+  if (candidate?.is_superadmin) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
