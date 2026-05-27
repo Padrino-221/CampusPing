@@ -26,9 +26,9 @@ class ArkeselService:
     async def send_bulk(self, sender: str, message: str, recipients: list[str]) -> dict:
         """
         Asynchronously dispatches a bulk SMS to recipients.
-        Automatically normalizes phones and chunks them in batches of 100.
         """
-        normalized_recipients = [to_international_format(r) for r in recipients if r]
+        normalized = [to_international_format(r) for r in recipients if r]
+        normalized_recipients = [n for n in normalized if n]
         if not normalized_recipients:
             return {"status": "error", "message": "No valid recipients"}
 
@@ -58,8 +58,20 @@ class ArkeselService:
                     headers=self.headers,
                     timeout=30.0
                 )
-                response.raise_for_status()
-                last_response = response.json()
+                try:
+                    raw = response.json()
+                except Exception:
+                    raw = {"raw_status": response.status_code, "body": response.text}
+
+                if response.status_code != 200:
+                    print(f"[Arkesel] ERROR {response.status_code}: {raw}")
+                    return {
+                        "status": "error",
+                        "code": str(response.status_code),
+                        "message": raw.get("message", str(raw)),
+                    }
+
+                last_response = raw
 
         return last_response
 
@@ -115,7 +127,8 @@ class ArkeselService:
         """
         Synchronously dispatches bulk SMS (used by Celery workers).
         """
-        normalized_recipients = [to_international_format(r) for r in recipients if r]
+        normalized = [to_international_format(r) for r in recipients if r]
+        normalized_recipients = [n for n in normalized if n]
         if not normalized_recipients:
             return {"status": "error", "message": "No valid recipients"}
 
@@ -139,14 +152,26 @@ class ArkeselService:
                     "message": message,
                     "recipients": batch
                 }
+                print(f"[Arkesel] Sending batch of {len(batch)} to '{sender}'")
                 response = client.post(
                     f"{ARKESEL_BASE_URL}/sms/send",
                     json=payload,
                     headers=self.headers,
                     timeout=30.0
                 )
-                response.raise_for_status()
-                raw = response.json()
+                try:
+                    raw = response.json()
+                except Exception:
+                    raw = {"raw_status": response.status_code, "body": response.text}
+
+                if response.status_code != 200:
+                    print(f"[Arkesel] ERROR {response.status_code}: {raw}")
+                    return {
+                        "status": "error",
+                        "code": str(response.status_code),
+                        "message": raw.get("message", str(raw)),
+                    }
+
                 last_response = raw
 
         if isinstance(last_response, list):
