@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { createCampaign, sendCampaign, scheduleCampaign, getCampaign, updateCampaign } from '../api/campaigns';
@@ -9,7 +9,7 @@ import MessageComposer from '../components/campaign/MessageComposer';
 import SmsUnitCounter from '../components/campaign/SmsUnitCounter';
 import { calculateSmsUnits } from '../utils/smsCalculator';
 import { formatNumber, formatDate, formatCurrency } from '../utils/formatters';
-import { ArrowLeft, ArrowRight, PaperPlane, Clock, Check, Coins, Users, AddressBook, CreditCard, SpinnerGap, Warning, XCircle } from '@phosphor-icons/react';
+import { ArrowLeft, ArrowRight, PaperPlane, Clock, Check, Coins, Users, AddressBook, CreditCard, SpinnerGap, XCircle } from '@phosphor-icons/react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -57,26 +57,32 @@ function validatePhone(raw) {
 
 function validateContacts(text) {
   const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-  const raw = [];
+  const entries = [];
   for (const line of lines) {
     const parts = line.split(/[,;]+/).map((p) => p.trim()).filter((p) => p.length > 0);
-    raw.push(...parts);
+    for (const part of parts) {
+      const result = validatePhone(part);
+      entries.push({
+        raw: part,
+        valid: result && !result.reason,
+        reason: result?.reason || null,
+        normalized: result?.phone || null,
+      });
+    }
   }
 
   const seen = new Set();
   const valid = [];
   const invalid = [];
-  for (const p of [...new Set(raw)]) {
-    const result = validatePhone(p);
-    if (!result) continue;
-    if (result.reason) {
-      invalid.push(result);
-    } else if (!seen.has(result.phone)) {
-      seen.add(result.phone);
-      valid.push(result.phone);
+  for (const e of entries) {
+    if (e.valid && e.normalized && !seen.has(e.normalized)) {
+      seen.add(e.normalized);
+      valid.push(e.normalized);
+    } else if (!e.valid) {
+      invalid.push({ phone: e.raw, reason: e.reason });
     }
   }
-  return { valid, invalid };
+  return { valid, invalid, entries };
 }
 
 export default function NewCampaign() {
@@ -382,35 +388,34 @@ export default function NewCampaign() {
 
                 {contactsText.trim() && (
                   <div className="space-y-3">
+                    {contactValidation.entries && contactValidation.entries.length > 0 && (
+                      <div className="bg-gray-50 rounded-2xl max-h-48 overflow-y-auto divide-y divide-gray-200">
+                        {contactValidation.entries.map((entry, i) => (
+                          <div key={i} className="flex items-center gap-2 px-4 py-2.5 text-sm">
+                            {entry.valid ? (
+                              <Check weight="bold" size={14} className="text-green-500 shrink-0" />
+                            ) : (
+                              <XCircle weight="fill" size={14} className="text-coral shrink-0" />
+                            )}
+                            <span className="font-mono text-text-primary truncate">{entry.raw}</span>
+                            {!entry.valid && (
+                              <span className="text-text-muted shrink-0">— {entry.reason}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex gap-3">
-                      <div className="flex-1 stat-card-green rounded-2xl p-4 text-center">
+                      <div className="flex-1 bg-green-50 rounded-2xl p-4 text-center">
                         <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Valid</p>
                         <p className="text-3xl font-extrabold text-green-500">{formatNumber(contactValidation.valid.length)}</p>
                       </div>
-                      <div className="flex-1 stat-card-red rounded-2xl p-4 text-center">
+                      <div className="flex-1 bg-red-50 rounded-2xl p-4 text-center">
                         <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Invalid</p>
                         <p className="text-3xl font-extrabold text-coral">{formatNumber(contactValidation.invalid.length)}</p>
                       </div>
                     </div>
-
-                    {contactValidation.invalid.length > 0 && (
-                      <div className="bg-red-50 rounded-2xl p-4 space-y-2">
-                        <p className="text-xs font-bold text-coral uppercase tracking-wide flex items-center gap-1">
-                          <Warning weight="duotone" size={14} />
-                          Invalid entries — fix before proceeding
-                        </p>
-                        {contactValidation.invalid.slice(0, 10).map((entry, i) => (
-                          <div key={i} className="flex items-center gap-2 text-sm">
-                            <XCircle weight="fill" size={14} className="text-coral shrink-0" />
-                            <span className="font-mono text-text-primary">{entry.phone}</span>
-                            <span className="text-text-muted">— {entry.reason}</span>
-                          </div>
-                        ))}
-                        {contactValidation.invalid.length > 10 && (
-                          <p className="text-xs text-text-muted">...and {contactValidation.invalid.length - 10} more</p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
 
