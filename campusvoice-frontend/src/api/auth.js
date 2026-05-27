@@ -7,3 +7,6 @@ export const logout = () => api.post('/api/auth/logout');
 export const getMe = () => api.get('/api/auth/me');
 export const updateMe = (data) => api.put('/api/auth/me', data);
 export const refresh = () => api.post('/api/auth/refresh');
+export const forgotPassword = (data) => api.post('/api/auth/forgot-password', data);
+export const verifyResetOtp = (data) => api.post('/api/auth/verify-reset-otp', data);
+export const resetPassword = (data) => api.post('/api/auth/reset-password', data);

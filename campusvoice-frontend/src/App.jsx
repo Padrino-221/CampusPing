@@ -7,6 +7,9 @@ import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyResetOtp from './pages/VerifyResetOtp';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import NewCampaign from './pages/NewCampaign';
 import CampaignDetail from './pages/CampaignDetail';
@@ -57,6 +60,9 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route
           path="/dashboard"

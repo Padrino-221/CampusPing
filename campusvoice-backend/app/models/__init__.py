@@ -6,6 +6,7 @@ from app.models.sender_id import SenderID
 from app.models.campaign import Campaign, CampaignLog
 from app.models.credits import CreditPackage, CreditTransaction
 from app.models.setting import PlatformSetting
+from app.models.password_reset import PasswordReset
 
 __all__ = [
     "Base",
@@ -18,4 +19,5 @@ __all__ = [
     "CreditPackage",
     "CreditTransaction",
     "PlatformSetting",
+    "PasswordReset",
 ]

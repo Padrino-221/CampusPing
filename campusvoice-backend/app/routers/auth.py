@@ -1,4 +1,5 @@
-from datetime import timedelta
+import random
+from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from app.config import settings
 from app.models.candidate import Candidate
 from app.models.institution import Institution
 from app.models.setting import PlatformSetting
+from app.models.password_reset import PasswordReset
 from app.schemas.candidate import (
     CandidateCreate,
     CandidateLogin,
@@ -23,6 +25,8 @@ from app.utils.security import (
     create_refresh_token,
     decode_token
 )
+from app.utils.phone import normalize_phone, to_international_format
+from app.services.arkesel import arkesel
 from app.middleware.auth import get_current_candidate
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -34,6 +38,20 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 class GoogleTokenRequest(BaseModel):
     token: str
     institution_id: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    phone: str
+
+
+class VerifyOtpRequest(BaseModel):
+    phone: str
+    code: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 @router.post("/register", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
 async def register(
@@ -377,3 +395,103 @@ async def google_auth(
         "message": "Google authentication successful",
         "candidate": candidate
     }
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    phone = normalize_phone(body.phone)
+    if not phone:
+        return {"message": "If that phone is registered, an OTP has been sent."}
+
+    stmt = select(Candidate).where(Candidate.phone == phone)
+    result = await db.execute(stmt)
+    candidate = result.scalar_one_or_none()
+
+    if not candidate or not candidate.hashed_password:
+        return {"message": "If that phone is registered, an OTP has been sent."}
+
+    code = f"{random.randint(0, 999999):06d}"
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    reset = PasswordReset(phone=phone, code=code, expires_at=expires_at)
+    db.add(reset)
+    await db.commit()
+
+    try:
+        recipient = to_international_format(phone)
+        if recipient:
+            await arkesel.send_bulk(
+                settings.ARKESEL_SENDER_ID,
+                f"Your CampusAlerts password reset code is: {code}. Valid for 10 minutes.",
+                [recipient],
+            )
+    except Exception as e:
+        print(f"[ForgotPassword] SMS send failed: {e}")
+
+    return {"message": "If that phone is registered, an OTP has been sent."}
+
+
+@router.post("/verify-reset-otp")
+async def verify_reset_otp(
+    body: VerifyOtpRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    phone = normalize_phone(body.phone)
+    if not phone:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+
+    stmt = select(PasswordReset).where(
+        PasswordReset.phone == phone,
+        PasswordReset.code == body.code,
+        PasswordReset.used == False,
+        PasswordReset.expires_at > datetime.utcnow(),
+    ).order_by(PasswordReset.created_at.desc())
+
+    result = await db.execute(stmt)
+    reset = result.scalar_one_or_none()
+
+    if not reset:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    reset.used = True
+    await db.commit()
+
+    candidate_stmt = select(Candidate).where(Candidate.phone == phone)
+    candidate_result = await db.execute(candidate_stmt)
+    candidate = candidate_result.scalar_one_or_none()
+
+    if not candidate:
+        raise HTTPException(status_code=400, detail="Account not found")
+
+    reset_token = create_access_token(
+        subject=str(candidate.id),
+        expires_delta=timedelta(minutes=5),
+    )
+
+    return {"reset_token": reset_token}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    payload = decode_token(body.token)
+    if not payload or payload.get("type") != "access":
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    candidate_id = payload.get("sub")
+    stmt = select(Candidate).where(Candidate.id == candidate_id)
+    result = await db.execute(stmt)
+    candidate = result.scalar_one_or_none()
+
+    if not candidate or not candidate.is_active:
+        raise HTTPException(status_code=400, detail="Account not found or inactive")
+
+    candidate.hashed_password = hash_password(body.new_password)
+    await db.commit()
+
+    return {"message": "Password reset successfully"}
