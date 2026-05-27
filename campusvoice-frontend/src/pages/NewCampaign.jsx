@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { createCampaign, sendCampaign, scheduleCampaign, getCampaign, updateCampaign } from '../api/campaigns';
@@ -9,7 +9,7 @@ import MessageComposer from '../components/campaign/MessageComposer';
 import SmsUnitCounter from '../components/campaign/SmsUnitCounter';
 import { calculateSmsUnits } from '../utils/smsCalculator';
 import { formatNumber, formatDate, formatCurrency } from '../utils/formatters';
-import { ArrowLeft, ArrowRight, PaperPlane, Clock, Check, Coins, Users, AddressBook, CreditCard, SpinnerGap } from '@phosphor-icons/react';
+import { ArrowLeft, ArrowRight, PaperPlane, Clock, Check, Coins, Users, AddressBook, CreditCard, SpinnerGap, Warning, XCircle } from '@phosphor-icons/react';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -18,7 +18,66 @@ import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import toast from 'react-hot-toast';
 
+const GHANA_PREFIXES = new Set([
+  '020', '023', '024', '025', '026', '027', '028', '029',
+  '050', '053', '054', '055', '056', '057', '058', '059',
+]);
+
 const steps = ['Audience', 'Message', 'Review & Send'];
+
+function validatePhone(raw) {
+  const s = raw.trim();
+  if (!s) return null;
+
+  const cleaned = s.replace(/[^\d+]/g, '');
+  if (!cleaned) return { phone: s, reason: 'No digits found' };
+
+  let normalized;
+  if (cleaned.startsWith('+')) {
+    if (!cleaned.startsWith('+233')) return { phone: s, reason: 'Must start with +233' };
+    normalized = '0' + cleaned.slice(4);
+  } else if (cleaned.startsWith('00233')) {
+    normalized = '0' + cleaned.slice(5);
+  } else if (cleaned.startsWith('233')) {
+    normalized = '0' + cleaned.slice(3);
+  } else if (cleaned.startsWith('0')) {
+    normalized = cleaned;
+  } else if (cleaned.length === 9) {
+    normalized = '0' + cleaned;
+  } else {
+    return { phone: s, reason: 'Unrecognised format' };
+  }
+
+  if (normalized.length !== 10) return { phone: s, reason: `Expected 10 digits, got ${normalized.length}` };
+  const prefix = normalized.slice(0, 3);
+  if (!GHANA_PREFIXES.has(prefix)) return { phone: s, reason: `Invalid prefix ${prefix}` };
+
+  return { phone: normalized };
+}
+
+function validateContacts(text) {
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+  const raw = [];
+  for (const line of lines) {
+    const parts = line.split(/[,;]+/).map((p) => p.trim()).filter((p) => p.length > 0);
+    raw.push(...parts);
+  }
+
+  const seen = new Set();
+  const valid = [];
+  const invalid = [];
+  for (const p of [...new Set(raw)]) {
+    const result = validatePhone(p);
+    if (!result) continue;
+    if (result.reason) {
+      invalid.push(result);
+    } else if (!seen.has(result.phone)) {
+      seen.add(result.phone);
+      valid.push(result.phone);
+    }
+  }
+  return { valid, invalid };
+}
 
 export default function NewCampaign() {
   const { candidate } = useAuthStore();
@@ -31,6 +90,7 @@ export default function NewCampaign() {
   const [filters, setFilters] = useState({});
   const [audienceCount, setAudienceCount] = useState(0);
   const [contactsText, setContactsText] = useState('');
+  const [contactValidation, setContactValidation] = useState({ valid: [], invalid: [] });
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
   const [senderIds, setSenderIds] = useState([]);
@@ -78,20 +138,11 @@ export default function NewCampaign() {
     }
   }, [editId]);
 
-  const parseContacts = (text) => {
-    const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-    const phones = [];
-    for (const line of lines) {
-      const parts = line.split(/[,;]+/).map((p) => p.trim()).filter((p) => p.length > 0);
-      phones.push(...parts);
-    }
-    return [...new Set(phones)];
-  };
-
   useEffect(() => {
     if (source === 'contacts') {
-      const contacts = parseContacts(contactsText);
-      setAudienceCount(contacts.length);
+      const result = validateContacts(contactsText);
+      setContactValidation(result);
+      setAudienceCount(result.valid.length);
     }
   }, [contactsText, source]);
 
@@ -101,13 +152,12 @@ export default function NewCampaign() {
 
   const getPayload = () => {
     if (source === 'contacts') {
-      const contacts = parseContacts(contactsText);
       return {
         title,
         message,
         sender_id_ref: selectedSenderId || undefined,
         filters: {},
-        custom_recipients: contacts,
+        custom_recipients: contactValidation.valid,
       };
     }
     return {
@@ -271,6 +321,8 @@ export default function NewCampaign() {
     );
   }
 
+  const canProceedFromAudience = source === 'directory' || (source === 'contacts' && contactValidation.invalid.length === 0 && audienceCount > 0);
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/campaigns')}>
@@ -319,20 +371,56 @@ export default function NewCampaign() {
                   Paste Phone Numbers
                 </p>
                 <p className="text-xs text-text-muted">
-                  One number per line, or comma-separated. Ghanaian numbers (e.g. 024XXXXXXX) supported.
+                  One number per line, or comma-separated. Supports local (024XXXXXXX) and international (+23324XXXXXXX) formats.
                 </p>
                 <textarea
                   value={contactsText}
                   onChange={(e) => setContactsText(e.target.value)}
-                  placeholder="0241234567&#10;0247654321&#10;0551234567, 0549876543"
+                  placeholder="0241234567&#10;+233241234567&#10;0551234567, 0549876543"
                   className="w-full h-40 px-4 py-3 text-sm rounded-2xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none resize-y transition-all"
                 />
-                <div className="stat-card-blue rounded-2xl p-5 text-center">
-                  <AddressBook weight="duotone" size={24} className="mx-auto text-primary mb-2" />
-                  <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Total Contacts</p>
-                  <p className="text-4xl font-extrabold text-primary">{formatNumber(audienceCount)}</p>
-                  <p className="text-xs font-medium text-text-muted mt-1">phone numbers parsed</p>
-                </div>
+
+                {contactsText.trim() && (
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <div className="flex-1 stat-card-green rounded-2xl p-4 text-center">
+                        <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Valid</p>
+                        <p className="text-3xl font-extrabold text-green-500">{formatNumber(contactValidation.valid.length)}</p>
+                      </div>
+                      <div className="flex-1 stat-card-red rounded-2xl p-4 text-center">
+                        <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Invalid</p>
+                        <p className="text-3xl font-extrabold text-coral">{formatNumber(contactValidation.invalid.length)}</p>
+                      </div>
+                    </div>
+
+                    {contactValidation.invalid.length > 0 && (
+                      <div className="bg-red-50 rounded-2xl p-4 space-y-2">
+                        <p className="text-xs font-bold text-coral uppercase tracking-wide flex items-center gap-1">
+                          <Warning weight="duotone" size={14} />
+                          Invalid entries — fix before proceeding
+                        </p>
+                        {contactValidation.invalid.slice(0, 10).map((entry, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm">
+                            <XCircle weight="fill" size={14} className="text-coral shrink-0" />
+                            <span className="font-mono text-text-primary">{entry.phone}</span>
+                            <span className="text-text-muted">— {entry.reason}</span>
+                          </div>
+                        ))}
+                        {contactValidation.invalid.length > 10 && (
+                          <p className="text-xs text-text-muted">...and {contactValidation.invalid.length - 10} more</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!contactsText.trim() && (
+                  <div className="stat-card rounded-2xl p-5 text-center">
+                    <AddressBook weight="duotone" size={24} className="mx-auto text-text-muted mb-2" />
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-wide">No contacts entered</p>
+                    <p className="text-xs font-medium text-text-muted mt-1">Paste numbers above to get started</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -340,7 +428,7 @@ export default function NewCampaign() {
 
         {step === 1 && (
           <div className="space-y-5">
-            <Input label="Campaign Title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Manifesto Blast" />
+            <Input label="Campaign Title *" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Manifesto Blast" />
             <Select label="Sender ID" value={selectedSenderId} onChange={(e) => setSelectedSenderId(e.target.value)} placeholder="CampusAlerts (Default)" options={senderIds.map((s) => ({ value: s.id, label: s.sender_name }))} />
             <MessageComposer onChange={setMessage} initial={message} />
             <SmsUnitCounter message={message} audienceCount={audienceCount} />
@@ -405,10 +493,10 @@ export default function NewCampaign() {
             <Button variant="ghost" disabled={sending} onClick={handleSaveDraft}>Save Draft</Button>
           )}
           {step === 0 && (
-            <Button icon={ArrowRight} onClick={() => setStep(step + 1)} className="ml-auto">Next</Button>
+            <Button icon={ArrowRight} disabled={!canProceedFromAudience} onClick={() => { if (!canProceedFromAudience) { if (source === 'contacts' && !contactsText.trim()) { toast.error('Paste at least one phone number'); return; } if (source === 'contacts' && contactValidation.invalid.length > 0) { toast.error(`Fix ${contactValidation.invalid.length} invalid number(s) first`); return; } } setStep(step + 1); }} className="ml-auto">Next</Button>
           )}
           {step === 1 && (
-            <Button icon={ArrowRight} disabled={!message.trim()} onClick={() => { if (!message.trim()) { toast.error('Write a message before proceeding'); return; } setStep(step + 1); }} className="ml-auto">Next</Button>
+            <Button icon={ArrowRight} disabled={!title.trim() || !message.trim()} onClick={() => { if (!title.trim()) { toast.error('Enter a campaign title'); return; } if (!message.trim()) { toast.error('Write a message before proceeding'); return; } setStep(step + 1); }} className="ml-auto">Next</Button>
           )}
         </div>
       </div>
