@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # SMS Gateway
     ARKESEL_API_KEY: str
-    ARKESEL_SENDER_ID: str = "CampusAlerts"
+    ARKESEL_SENDER_ID: str = "CampusAlert"
 
     # Paystack
     PAYSTACK_SECRET_KEY: str
