@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getBalance, getTransactions, getPackages, purchaseCredits, verifyPayment } from '../api/credits';
 import { formatDate, formatNumber, formatCurrency } from '../utils/formatters';
 import { Coins, CreditCard, ArrowUpRight, Clock, CheckCircle, SpinnerGap } from '@phosphor-icons/react';
@@ -13,25 +13,25 @@ export default function Credits() {
   const [purchasing, setPurchasing] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const ref = searchParams.get('reference');
-    if (ref) {
-      setVerifying(true);
-      verifyPayment(ref)
-        .then(({ data }) => {
-          toast.success('Payment verified! Credits added.');
-          refresh();
-        })
-        .catch((err) => {
-          toast.error(err.response?.data?.detail || 'Verification failed');
-        })
-        .finally(() => {
-          setVerifying(false);
-          window.history.replaceState({}, '', '/credits');
-        });
-    }
-  }, []);
+    if (!ref) return;
+    setVerifying(true);
+    verifyPayment(ref)
+      .then(({ data }) => {
+        toast.success('Payment verified! Credits added.');
+        refresh();
+      })
+      .catch((err) => {
+        toast.error(err.response?.data?.detail || 'Verification failed');
+      })
+      .finally(() => {
+        setVerifying(false);
+        navigate('/credits', { replace: true });
+      });
+  }, [searchParams]);
 
   const refresh = () => {
     getBalance().then(({ data }) => setBalance(data.balance)).catch(() => {});

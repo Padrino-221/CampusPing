@@ -328,6 +328,17 @@ async def google_auth(
             await db.commit()
             await db.refresh(candidate)
 
+    # Check maintenance mode (skip for admin)
+    if candidate.email != settings.ADMIN_EMAIL:
+        maint = await db.get(PlatformSetting, "maintenance_enabled")
+        if maint and maint.value == "true":
+            msg_setting = await db.get(PlatformSetting, "maintenance_message")
+            detail = msg_setting.value if msg_setting and msg_setting.value else "Platform is under maintenance. Please try again later."
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=detail,
+            )
+
     if not candidate.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

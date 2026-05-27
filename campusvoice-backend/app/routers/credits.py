@@ -60,7 +60,7 @@ async def list_transactions(
 @router.get("/packages")
 async def list_packages(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(CreditPackage).where(CreditPackage.is_active == True).order_by(CreditPackage.price_ghs)
+        select(CreditPackage).where(CreditPackage.is_active == True).order_by(CreditPackage.sort_order.asc(), CreditPackage.price_ghs)
     )
     packages = result.scalars().all()
     return [

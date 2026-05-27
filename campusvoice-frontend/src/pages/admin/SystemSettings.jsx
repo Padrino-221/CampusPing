@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { resetDatabase, getPlatformSettings, toggleMaintenance, getSystemHealth } from '../../api/admin';
+import { resetDatabase, getPlatformSettings, toggleMaintenance, getSystemHealth, seedDummyTransactions } from '../../api/admin';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 import {
   Database, WarningCircle, Trash, CheckCircle, Wrench,
   Heartbeat, ToggleLeft, ToggleRight, CellSignalFull, SpinnerGap,
+  ChatText, Users, GraduationCap, Megaphone, Buildings, IdentificationCard, TestTube,
 } from '@phosphor-icons/react';
 import toast from 'react-hot-toast';
 
@@ -17,6 +18,7 @@ export default function AdminSystemSettings() {
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [toggling, setToggling] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(true);
@@ -76,6 +78,17 @@ export default function AdminSystemSettings() {
     setResetting(false);
   };
 
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      const { data } = await seedDummyTransactions();
+      toast.success(data.message);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to seed data');
+    }
+    setSeeding(false);
+  };
+
   const dbColor = health?.database === 'healthy' ? 'text-green-500' : 'text-coral';
 
   return (
@@ -111,7 +124,7 @@ export default function AdminSystemSettings() {
         <div className="flex gap-2">
           <input
             type="text"
-            className="input flex-1"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
             placeholder="Briefly describe what's happening..."
             value={maintenanceMessage}
             onChange={(e) => setMaintenanceMessage(e.target.value)}
@@ -139,9 +152,7 @@ export default function AdminSystemSettings() {
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <span className="text-lg">💬</span>
-              </div>
+              <ChatText weight="duotone" size={28} className="text-primary" />
               <div>
                 <p className="text-xs text-text-muted">SMS Balance</p>
                 <p className="font-bold text-text-primary">
@@ -151,17 +162,25 @@ export default function AdminSystemSettings() {
                 </p>
               </div>
             </div>
-            {health.counts && Object.entries(health.counts).map(([key, val]) => (
-              <div key={key} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-                <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xs uppercase">
-                  {key.slice(0, 2)}
+            {health.counts && Object.entries(health.counts).map(([key, val]) => {
+              const iconMap = {
+                candidates: Users,
+                students: GraduationCap,
+                campaigns: Megaphone,
+                institutions: Buildings,
+                sender_ids: IdentificationCard,
+              };
+              const Icon = iconMap[key] || Database;
+              return (
+                <div key={key} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                  <Icon weight="duotone" size={28} className="text-primary" />
+                  <div>
+                    <p className="text-xs text-text-muted capitalize">{key.replace(/_/g, ' ')}</p>
+                    <p className="font-bold text-text-primary">{val ?? 0}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-text-muted capitalize">{key.replace(/_/g, ' ')}</p>
-                  <p className="font-bold text-text-primary">{val ?? 0}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-coral">Failed to load health data.</p>
@@ -171,6 +190,18 @@ export default function AdminSystemSettings() {
             Refresh
           </Button>
         </div>
+      </Card>
+
+      {/* Seed Dummy Data */}
+      <Card title="Dummy Data" icon={TestTube}>
+        <p className="text-sm text-text-muted mb-4">
+          Populate the entire system with sample data to test every admin page:
+          institutions, candidates, students, sender IDs, campaigns (with logs),
+          and credit transactions (purchases, deductions, refunds, pending).
+        </p>
+        <Button variant="outline" icon={TestTube} loading={seeding} onClick={handleSeed}>
+          Seed All Dummy Data
+        </Button>
       </Card>
 
       {/* Reset Database */}

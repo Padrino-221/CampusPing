@@ -1,11 +1,22 @@
-from app.tasks.celery_app import celery_app
 from app.services.arkesel import arkesel
 from app.database import get_sync_db
 from app.models.campaign import CampaignLog
 from datetime import datetime
 
-@celery_app.task
-def poll_pending_logs():
+try:
+    from app.tasks.celery_app import celery_app, _redis_available
+    if _redis_available:
+        @celery_app.task
+        def poll_pending_logs():
+            _poll()
+    else:
+        def poll_pending_logs():
+            _poll()
+except Exception:
+    def poll_pending_logs():
+        _poll()
+
+def _poll():
     """
     Celery Beat task that automatically runs on a schedule to poll Arkesel
     for delivery reports of outstanding 'sent' SMS messages.
@@ -49,7 +60,9 @@ def poll_pending_logs():
                     updated_count += 1
                     
             except Exception as log_err:
-                print(f"[Celery Beat] Failed to poll status for log {log.id}: {log_err}")
+                err_str = str(log_err)
+                if "404" not in err_str and "Not Found" not in err_str:
+                    print(f"[Celery Beat] Failed to poll status for log {log.id}: {log_err}")
 
         # Commit changes if any updates occurred
         if updated_count > 0:

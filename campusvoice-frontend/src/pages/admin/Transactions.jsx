@@ -39,17 +39,17 @@ export default function AdminTransactions() {
                 <th className="text-left py-3 px-2 text-xs font-semibold text-text-muted uppercase">Email</th>
                 <th className="text-left py-3 px-2 text-xs font-semibold text-text-muted uppercase">Type</th>
                 <th className="text-right py-3 px-2 text-xs font-semibold text-text-muted uppercase">Credits</th>
-                <th className="text-right py-3 px-2 text-xs font-semibold text-text-muted uppercase">Balance</th>
-                <th className="text-left py-3 px-2 text-xs font-semibold text-text-muted uppercase">Description</th>
+                <th className="text-left py-3 px-2 text-xs font-semibold text-text-muted uppercase">Package</th>
                 <th className="text-left py-3 px-2 text-xs font-semibold text-text-muted uppercase">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {transactions.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-sm text-text-muted">No transactions found</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-sm text-text-muted">No transactions found</td></tr>
               ) : (
                 transactions.map((t) => {
                   const style = typeStyles[t.type] || { label: t.type, variant: 'warning' };
+                  const packageMatch = t.description?.match(/(?:Credited|Purchased):\s*(.+)/);
                   return (
                     <tr key={t.id} className="hover:bg-gray-50/50">
                       <td className="py-3 px-2 font-medium text-text-primary">{t.candidate_name || '\u2014'}</td>
@@ -63,8 +63,7 @@ export default function AdminTransactions() {
                           {formatNumber(Math.abs(t.amount))}
                         </span>
                       </td>
-                      <td className="py-3 px-2 text-right text-text-muted">{formatNumber(t.balance_after)}</td>
-                      <td className="py-3 px-2 text-text-muted max-w-[200px] truncate" title={t.description || ''}>{t.description || '\u2014'}</td>
+                      <td className="py-3 px-2 text-text-muted">{packageMatch ? packageMatch[1] : '\u2014'}</td>
                       <td className="py-3 px-2 text-text-muted whitespace-nowrap">{formatDate(t.created_at)}</td>
                     </tr>
                   );

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getRevenue, getArkeselBalance } from '../../api/admin';
 import Card from '../../components/ui/Card';
 import StatsCard from '../../components/ui/StatsCard';
-import { Coins, PaperPlane, Users, Wallet } from '@phosphor-icons/react';
+import { Coins, PaperPlane, Users, Wallet, Money } from '@phosphor-icons/react';
 import { formatNumber } from '../../utils/formatters';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -24,6 +24,7 @@ export default function AdminRevenue() {
   if (!data) return <p className="text-text-muted text-sm">Loading...</p>;
 
   const stats = [
+    { icon: Money, label: 'Total Revenue', value: `GH₵ ${formatNumber(data.total_revenue_ghs)}`, variant: 'green' },
     ...(arkeselSms !== null ? [{ icon: Wallet, label: 'Arkesel SMS Balance', value: formatNumber(arkeselSms), variant: 'blue' }] : []),
     ...(arkeselMain !== null ? [{ icon: Wallet, label: 'Arkesel Wallet', value: arkeselMain, variant: 'green' }] : []),
     { icon: Coins, label: 'Credits Sold', value: formatNumber(data.total_credits_sold), variant: 'gold' },
@@ -41,9 +42,9 @@ export default function AdminRevenue() {
 
       <Card title="Monthly Revenue (Last 12 Months)">
         {chartData.length > 0 ? (
-          <div className="w-full h-72">
+          <div className="w-full h-72" style={{ overflow: 'visible' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />

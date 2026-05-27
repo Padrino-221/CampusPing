@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { listCreditPackages, createCreditPackage, deleteCreditPackage } from '../../api/admin';
+import { listCreditPackages, createCreditPackage, deleteCreditPackage, reorderCreditPackages } from '../../api/admin';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Table from '../../components/ui/Table';
 import ConfirmModal from '../../components/shared/ConfirmModal';
-import { PlusCircle, Trash, Check, X } from '@phosphor-icons/react';
+import { PlusCircle, Trash, Check, X, CaretUp, CaretDown } from '@phosphor-icons/react';
 import toast from 'react-hot-toast';
 
 export default function AdminCreditPackages() {
@@ -15,6 +15,7 @@ export default function AdminCreditPackages() {
   const [form, setForm] = useState({ name: '', credits: '', price_ghs: '' });
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [reordering, setReordering] = useState(false);
 
   const fetch = () => {
     setLoading(true);
@@ -58,12 +59,54 @@ export default function AdminCreditPackages() {
     }
   };
 
+  const move = async (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= packages.length) return;
+    const next = [...packages];
+    [next[index], next[target]] = [next[target], next[index]];
+    setPackages(next);
+    setReordering(true);
+    try {
+      await reorderCreditPackages(
+        next.map((p, i) => ({ id: p.id, sort_order: i }))
+      );
+    } catch {
+      toast.error('Failed to reorder');
+      fetch();
+    }
+    setReordering(false);
+  };
+
   const columns = [
+    {
+      key: 'sort_order', label: '',
+      render: (_, row) => {
+        const idx = packages.findIndex((p) => p.id === row.id);
+        return (
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => move(idx, -1)}
+              disabled={idx === 0 || reordering}
+              className="p-1 text-text-muted hover:text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <CaretUp weight="duotone" size={14} />
+            </button>
+            <button
+              onClick={() => move(idx, 1)}
+              disabled={idx === packages.length - 1 || reordering}
+              className="p-1 text-text-muted hover:text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <CaretDown weight="duotone" size={14} />
+            </button>
+          </div>
+        );
+      },
+    },
     { key: 'name', label: 'Name' },
     { key: 'credits', label: 'Credits' },
     {
       key: 'price_ghs', label: 'Price (GHS)',
-      render: (val) => `GHS ${parseFloat(val).toFixed(2)}`,
+      render: (val) => `GH₵ ${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     },
     {
       key: 'is_active', label: 'Status',

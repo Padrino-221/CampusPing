@@ -1,6 +1,6 @@
 import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 
-export default function Pagination({ page, total, limit = 20, onChange }) {
+export default function Pagination({ page, total, limit = 10, onChange }) {
   const totalPages = Math.ceil(total / limit);
   if (totalPages <= 1) return null;
 

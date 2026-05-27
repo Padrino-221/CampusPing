@@ -44,20 +44,23 @@ export const deleteStudent = (id) => api.delete(`/api/admin/students/${id}`);
 export const downloadStudentTemplate = () =>
   api.get('/api/admin/students/template', { responseType: 'blob' });
 
-export const listTransactions = (page = 1, limit = 50) =>
+export const listTransactions = (page = 1, limit = 10) =>
   api.get(`/api/admin/transactions?page=${page}&limit=${limit}`);
 export const getRevenue = () => api.get('/api/admin/revenue');
 export const getArkeselBalance = () => api.get('/api/admin/credits/arkesel-balance');
-export const listAllCampaigns = (page = 1, limit = 20) =>
+export const listAllCampaigns = (page = 1, limit = 10) =>
   api.get(`/api/admin/campaigns?page=${page}&limit=${limit}`);
 export const listCreditPackages = () => api.get('/api/admin/credit-packages');
 export const createCreditPackage = (name, credits, priceGhs) =>
   api.post('/api/admin/credit-packages', { name, credits, price_ghs: priceGhs });
 export const deleteCreditPackage = (id) => api.delete(`/api/admin/credit-packages/${id}`);
+export const reorderCreditPackages = (packages) =>
+  api.put('/api/admin/credit-packages/reorder', { packages });
 
 export const resetDatabase = () => api.post('/api/admin/system/reset');
 export const adjustCandidateCredits = (id, amount, reason) =>
   api.put(`/api/admin/candidates/${id}/credits`, { amount, reason });
+export const seedDummyTransactions = () => api.post('/api/admin/system/seed-transactions');
 
 export const getPlatformSettings = () => api.get('/api/admin/system/settings');
 export const toggleMaintenance = (enabled, message) =>

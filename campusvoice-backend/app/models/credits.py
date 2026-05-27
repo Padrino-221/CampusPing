@@ -15,6 +15,7 @@ class CreditPackage(Base):
     credits: Mapped[int] = mapped_column(Integer, nullable=False)
     price_ghs: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class CreditTransaction(Base):

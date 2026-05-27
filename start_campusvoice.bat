@@ -26,23 +26,42 @@ timeout /t 3 /nobreak >nul
 echo [2/3] Starting Frontend (Vite)...
 start "CampusAlerts-Frontend" cmd /c "cd /d "%~dp0campusvoice-frontend" && npm run dev"
 
-:: Start Celery Worker (processes campaign dispatch tasks)
-echo [3/5] Starting Celery Worker...
-start "CampusAlerts-Celery-Worker" cmd /c "cd /d "%~dp0campusvoice-backend" && call venv\Scripts\activate.bat && celery -A app.tasks.celery_app worker --loglevel=info --pool=solo"
+:: Check if Redis is available
+redis-cli ping >nul 2>&1
+if %errorlevel% equ 0 (
+    set REDIS_AVAILABLE=1
+) else (
+    set REDIS_AVAILABLE=0
+)
 
-:: Start Celery Beat (scheduled delivery polling)
-echo [4/5] Starting Celery Beat...
-start "CampusAlerts-Celery-Beat" cmd /c "cd /d "%~dp0campusvoice-backend" && call venv\Scripts\activate.bat && celery -A app.tasks.celery_app beat --loglevel=info"
+if "%REDIS_AVAILABLE%"=="1" (
+    :: Start Celery Worker (processes campaign dispatch tasks)
+    echo [3/5] Starting Celery Worker...
+    start "CampusAlerts-Celery-Worker" cmd /c "cd /d "%~dp0campusvoice-backend" && call venv\Scripts\activate.bat && celery -A app.tasks.celery_app worker --loglevel=info --pool=solo"
 
-echo [5/5] All services starting...
+    :: Start Celery Beat (scheduled delivery polling)
+    echo [4/5] Starting Celery Beat...
+    start "CampusAlerts-Celery-Beat" cmd /c "cd /d "%~dp0campusvoice-backend" && call venv\Scripts\activate.bat && celery -A app.tasks.celery_app beat --loglevel=info"
+) else (
+    echo [!] Redis not running — skipping Celery (campaigns use sync dispatch)
+)
+
+if "%REDIS_AVAILABLE%"=="1" (
+    echo [5/5] All services starting...
+) else (
+    echo [3/3] Services starting (Celery skipped)...
+)
 echo.
 echo   Backend API     : http://localhost:8000
 echo   Frontend        : http://localhost:5173 (or 5174/5175 if taken)
-echo   Celery Worker   : Running
-echo   Celery Beat     : Running
-echo   Redis           : localhost:6379
-echo   Health          : http://localhost:8000/api/health
-echo.
+if "%REDIS_AVAILABLE%"=="1" (
+    echo   Redis           : localhost:6379
+    echo   Celery Worker   : Running (async dispatch)
+    echo   Celery Beat     : Running (delivery polling)
+) else (
+    echo   Redis           : Not running
+    echo   Campaigns       : Sync dispatch (no Redis needed)
+)
 echo Close this window to leave services running in their own windows.
 echo ============================================
 pause

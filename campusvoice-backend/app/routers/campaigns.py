@@ -16,6 +16,8 @@ from app.services.filter_engine import get_filtered_count_async
 from app.services.credits import deduct_credits, add_credits
 from app.utils.sms import calculate_sms_units
 from app.tasks.send_campaign import run_dispatch_sync
+from app.tasks.celery_app import _redis_available
+from app.config import settings
 
 router = APIRouter(prefix="/api/campaigns", tags=["Campaigns"])
 
@@ -217,11 +219,16 @@ async def send_campaign(
     # Deduct credits (raises 402 if insufficient)
     await deduct_credits(db, candidate.id, credits_needed, str(campaign_id))
 
-    # Dispatch synchronously in a thread pool to avoid blocking the event loop
+    # Dispatch — Celery in dev (with Redis), sync in prod
     campaign.status = "queued"
     await db.commit()
 
-    await asyncio.to_thread(run_dispatch_sync, str(campaign_id))
+    use_celery = settings.ENVIRONMENT == "development" and _redis_available
+    if use_celery:
+        from app.tasks.send_campaign import dispatch_campaign
+        dispatch_campaign.apply_async((str(campaign_id),))
+    else:
+        await asyncio.to_thread(run_dispatch_sync, str(campaign_id))
 
     # Re-fetch to get updated status and counts
     result = await db.execute(
@@ -261,12 +268,12 @@ async def schedule_campaign(
     campaign.scheduled_at = scheduled_at
     await db.commit()
 
-    # Try Celery dispatch, fall back to sync (send immediately)
-    try:
+    use_celery = settings.ENVIRONMENT == "development" and _redis_available
+    if use_celery:
         from app.tasks.send_campaign import dispatch_campaign
         dispatch_campaign.apply_async((str(campaign_id),), eta=scheduled_at)
-    except Exception as e:
-        print(f"[Dispatch] Celery unavailable for schedule, sending immediately: {e}", flush=True)
+    else:
+        print(f"[Dispatch] Celery unavailable — sending scheduled campaign immediately")
         await asyncio.to_thread(run_dispatch_sync, str(campaign_id))
 
     return {"message": f"Campaign scheduled for {scheduled_at.isoformat()}", "campaign_id": str(campaign_id)}

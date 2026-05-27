@@ -1,6 +1,7 @@
 import io
 import uuid
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Body
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from app.models.credits import CreditPackage, CreditTransaction
 from app.models.institution import Institution
 from app.models.setting import PlatformSetting
 from app.utils.phone import normalize_phone
+from app.utils.security import hash_password
 from app.utils.security import hash_password
 from app.config import settings
 from app.services.arkesel import arkesel
@@ -404,7 +406,7 @@ async def get_arkesel_balance(_=Depends(require_admin)):
 
 @router.get("/transactions")
 async def list_transactions(
-    page: int = 1, limit: int = 50,
+    page: int = 1, limit: int = 10,
     db: AsyncSession = Depends(get_db),
     _=Depends(require_admin)
 ):
@@ -450,6 +452,36 @@ async def revenue_dashboard(
     )
     total_credits_sold = sold_result.scalar()
 
+    # Build price map from credit packages to compute GHS revenue
+    packages_result = await db.execute(select(CreditPackage).where(CreditPackage.is_active == True))
+    price_map = {}  # credits -> price_ghs
+    for p in packages_result.scalars().all():
+        price_map[p.credits] = float(p.price_ghs)
+
+    # Fallback: average price per credit from all packages
+    avg_price_per_credit = sum(price_map.values()) / sum(price_map.keys()) if price_map else 0.2
+
+    def credits_to_ghs(amount):
+        return amount * avg_price_per_credit
+
+    # Fetch all purchase transactions to compute actual revenue
+    purchases = await db.execute(
+        select(CreditTransaction).where(
+            CreditTransaction.type == "purchase",
+            CreditTransaction.amount > 0,
+        )
+    )
+
+    total_revenue_ghs = 0.0
+    for txn in purchases.scalars().all():
+        amt = txn.amount
+        if amt in price_map:
+            total_revenue_ghs += price_map[amt]
+        else:
+            total_revenue_ghs += credits_to_ghs(amt)
+
+    total_revenue_ghs = round(total_revenue_ghs, 2)
+
     # Total SMS units dispatched (sum of credits_used across completed campaigns)
     dispatched_result = await db.execute(
         select(func.coalesce(func.sum(Campaign.credits_used), 0))
@@ -479,7 +511,12 @@ async def revenue_dashboard(
             month_str = month_val.strftime("%Y-%m")
         else:
             month_str = str(month_val)[:7]
-        revenue_by_month.append({"month": month_str, "credits_sold": int(row.credits)})
+        credits = int(row.credits)
+        revenue_by_month.append({
+            "month": month_str,
+            "credits_sold": credits,
+            "revenue_ghs": round(price_map.get(credits, credits_to_ghs(credits)), 2),
+        })
 
     # Total candidates
     candidates_result = await db.execute(select(func.count(Candidate.id)))
@@ -491,6 +528,7 @@ async def revenue_dashboard(
 
     return {
         "total_credits_sold": total_credits_sold,
+        "total_revenue_ghs": total_revenue_ghs,
         "total_sms_dispatched": total_sms_dispatched,
         "total_candidates": total_candidates,
         "total_campaigns": total_campaigns,
@@ -505,15 +543,35 @@ async def list_credit_packages(
     _=Depends(require_admin)
 ):
     result = await db.execute(
-        select(CreditPackage).order_by(CreditPackage.credits.asc())
+        select(CreditPackage).order_by(CreditPackage.sort_order.asc(), CreditPackage.credits.asc())
     )
     return [
         {
             "id": str(p.id), "name": p.name, "credits": p.credits,
-            "price_ghs": float(p.price_ghs), "is_active": p.is_active,
+            "price_ghs": float(p.price_ghs), "is_active": p.is_active, "sort_order": p.sort_order,
         }
         for p in result.scalars().all()
     ]
+
+class ReorderItem(BaseModel):
+    id: str
+    sort_order: int
+
+class ReorderRequest(BaseModel):
+    packages: list[ReorderItem]
+
+@router.put("/credit-packages/reorder")
+async def reorder_credit_packages(
+    body: ReorderRequest,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+    for item in body.packages:
+        pkg = await db.get(CreditPackage, item.id)
+        if pkg:
+            pkg.sort_order = item.sort_order
+    await db.commit()
+    return {"message": "Packages reordered"}
 
 @router.delete("/credit-packages/{package_id}")
 async def delete_credit_package(
@@ -535,11 +593,14 @@ async def create_credit_package(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_admin)
 ):
-    pkg = CreditPackage(name=name, credits=credits, price_ghs=price_ghs)
+    # Get highest sort_order
+    max_order = await db.execute(select(func.max(CreditPackage.sort_order)))
+    next_order = (max_order.scalar() or 0) + 1
+    pkg = CreditPackage(name=name, credits=credits, price_ghs=price_ghs, sort_order=next_order)
     db.add(pkg)
     await db.commit()
     await db.refresh(pkg)
-    return {"id": str(pkg.id), "name": pkg.name, "credits": pkg.credits, "price_ghs": float(pkg.price_ghs)}
+    return {"id": str(pkg.id), "name": pkg.name, "credits": pkg.credits, "price_ghs": float(pkg.price_ghs), "sort_order": pkg.sort_order}
 
 # ─── System Settings ────────────────────────────────────────────
 
@@ -766,3 +827,370 @@ async def system_health(
         "sms_balance": sms_balance,
         "counts": counts,
     }
+
+
+# ─── Seed All Dummy Data ────────────────────────────────────────
+
+GHANAIAN_FIRST_NAMES = [
+    "Kwame", "Akua", "Yaw", "Afia", "Kofi", "Ama", "Kwesi", "Esi",
+    "Nana", "Adwoa", "Kojo", "Abena", "Kweku", "Yaa", "Kwabena", "Akosua",
+    "Emmanuel", "Grace", "Samuel", "Mavis", "Daniel", "Ruth", "Michael", "Sarah",
+]
+
+GHANAIAN_LAST_NAMES = [
+    "Mensah", "Asante", "Owusu", "Boateng", "Ofori", "Antwi", "Addo", "Agyeman",
+    "Sarpong", "Tetteh", "Quartey", "Amoako", "Adu", "Opoku", "Aryee", "Ansah",
+]
+
+DEPARTMENTS = [
+    "Computer Science", "Business Administration", "Nursing", "Engineering",
+    "Mathematics", "Accounting", "Education", "Agriculture",
+]
+
+FACULTIES = ["Sciences", "Business", "Health Sciences", "Engineering", "Education", "Agriculture"]
+
+LEVELS = [100, 200, 300, 400]
+
+INSTITUTIONS_SEED = [
+    {"name": "Kumasi Technical University", "slug": "ktu", "country": "Ghana"},
+    {"name": "University of Education, Winneba", "slug": "uew", "country": "Ghana"},
+    {"name": "Ghana Communication Technology University", "slug": "gctu", "country": "Ghana"},
+]
+
+CANDIDATES_SEED = [
+    {"name": "Gifty Asare", "position": "SRC President", "email": "gifty@ktu.edu"},
+    {"name": "Emmanuel Tetteh", "position": "Women's Commissioner", "email": "emmanuel@ktu.edu"},
+    {"name": "Fatima Mohammed", "position": "Treasurer", "email": "fatima@ktu.edu"},
+    {"name": "Isaac Adjei", "position": "SRC President", "email": "isaac@uew.edu"},
+    {"name": "Mariama Bawumia", "position": "General Secretary", "email": "mariama@uew.edu"},
+    {"name": "Stephen Osei", "position": "Financial Secretary", "email": "stephen@uew.edu"},
+    {"name": "Nana Ama Pokuaa", "position": "SRC President", "email": "nana@gctu.edu"},
+    {"name": "John Kwao", "position": "Sports Secretary", "email": "john@gctu.edu"},
+    {"name": "Abigail Nkansah", "position": "Treasurer", "email": "abigail@gctu.edu"},
+]
+
+SENDER_NAMES = [
+    ["CAMPUSPING", "SRC_KTU", "KSA_GH"],
+    ["UEW_VOICE", "SRC_UEW"],
+    ["GCTU_ALERT", "GCTU_SRC"],
+]
+
+
+@router.post("/system/seed-transactions")
+async def seed_dummy_data(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin)
+):
+
+    def ts(base, day_offset, hour=12, minute=0):
+        return base + timedelta(days=day_offset, hours=hour, minutes=minute)
+
+    def make_ref(prefix="DUMMY"):
+        return f"{prefix}-{uuid.uuid4().hex[:12].upper()}"
+
+    now = datetime.utcnow()
+    base_time = now - timedelta(days=90)
+
+    created = {"institutions": 0, "candidates": 0, "students": 0, "sender_ids": 0, "campaigns": 0, "logs": 0, "transactions": 0}
+
+    # ── Clean previously seeded data (FK-safe order) ──
+    dummy_emails = [c["email"] for c in CANDIDATES_SEED]
+    dummy_slugs = [s["slug"] for s in INSTITUTIONS_SEED]
+
+    await db.execute(text("DELETE FROM campaign_logs"))
+    await db.execute(text("DELETE FROM campaigns"))
+    await db.execute(text("DELETE FROM credit_transactions WHERE reference LIKE 'DUMMY-%' OR reference LIKE 'refund-%'"))
+
+    for email in dummy_emails:
+        await db.execute(text(f"DELETE FROM sender_ids WHERE candidate_id IN (SELECT id FROM candidates WHERE email = '{email}')"))
+        await db.execute(text(f"DELETE FROM credit_transactions WHERE candidate_id IN (SELECT id FROM candidates WHERE email = '{email}')"))
+        await db.execute(text(f"DELETE FROM candidates WHERE email = '{email}'"))
+    for slug in dummy_slugs:
+        await db.execute(text(f"DELETE FROM student_directories WHERE institution_id IN (SELECT id FROM institutions WHERE slug = '{slug}')"))
+        await db.execute(text(f"DELETE FROM institutions WHERE slug = '{slug}'"))
+    for slug in dummy_slugs:
+        await db.execute(text(f"DELETE FROM student_directories WHERE institution_id IN (SELECT id FROM institutions WHERE slug = '{slug}')"))
+    for email in dummy_emails:
+        await db.execute(text(f"DELETE FROM candidates WHERE email = '{email}'"))
+    for slug in dummy_slugs:
+        await db.execute(text(f"DELETE FROM institutions WHERE slug = '{slug}'"))
+
+    await db.commit()
+
+    # ── 1. Create extra institutions ──
+    existing_inst = (await db.execute(select(Institution))).scalars().all()
+    existing_names = {i.name for i in existing_inst}
+
+    all_institutions = list(existing_inst)
+    for data in INSTITUTIONS_SEED:
+        if data["name"] in existing_names:
+            continue
+        inst = Institution(name=data["name"], slug=data["slug"], country=data["country"])
+        db.add(inst)
+        await db.flush()
+        all_institutions.append(inst)
+        created["institutions"] += 1
+
+    # ── 2. Create dummy candidates (skip admin) ──
+    admin_candidates = [c for c in (await db.execute(select(Candidate).where(Candidate.email == "padrino@admin.com"))).scalars().all()]
+    admin = admin_candidates[0] if admin_candidates else None
+
+    all_candidates = list((await db.execute(select(Candidate).where(Candidate.is_active == True))).scalars().all())
+    existing_emails = {c.email for c in all_candidates}
+    new_candidates = []
+
+    for idx, data in enumerate(CANDIDATES_SEED):
+        if data["email"] in existing_emails:
+            continue
+        inst_idx = idx // 3
+        inst = all_institutions[inst_idx]
+        cand = Candidate(
+            institution_id=inst.id,
+            full_name=data["name"],
+            email=data["email"],
+            phone=f"0{random.randint(20, 59)}{random.randint(1000000, 9999999)}",
+            position=data["position"],
+            hashed_password=hash_password("password123"),
+            credits_balance=random.randint(500, 5000),
+            is_active=True,
+            is_verified=True,
+        )
+        db.add(cand)
+        await db.flush()
+        all_candidates.append(cand)
+        new_candidates.append(cand)
+        created["candidates"] += 1
+
+    # Deduplicate: include admin if not already in list
+    admin_ids = {admin.id} if admin else set()
+    existing_ids = {c.id for c in all_candidates}
+    candidates_all = all_candidates + ([admin] if admin and admin.id not in existing_ids else [])
+
+    # ── 3. Create students per institution ──
+    gender_pool = ["male", "female"]
+    for inst in all_institutions:
+        for i in range(12):
+            gender = random.choice(gender_pool)
+            first = random.choice(GHANAIAN_FIRST_NAMES)
+            last = random.choice(GHANAIAN_LAST_NAMES)
+            student = StudentDirectory(
+                institution_id=inst.id,
+                full_name=f"{first} {last}",
+                phone=f"0{random.randint(20, 59)}{random.randint(1000000, 9999999)}",
+                gender=gender,
+                level=random.choice(LEVELS),
+                department=random.choice(DEPARTMENTS),
+                faculty=random.choice(FACULTIES),
+                programme=f"BSc. {random.choice(DEPARTMENTS)}",
+                student_id=f"{inst.slug.upper()}/{random.randint(1000, 9999)}/{random.choice(LEVELS)}",
+                is_active=True,
+            )
+            db.add(student)
+            created["students"] += 1
+
+    await db.flush()
+
+    # ── 4. Create sender IDs per candidate ──
+    for idx, cand in enumerate(new_candidates):
+        sender_group = SENDER_NAMES[idx % len(SENDER_NAMES)]
+        for sname in sender_group:
+            status = random.choices(["approved", "pending", "rejected"], weights=[6, 2, 2])[0]
+            sid = SenderID(
+                candidate_id=cand.id,
+                sender_name=sname,
+                status=status,
+                rejection_note="Does not meet guidelines" if status == "rejected" else None,
+                reviewed_at=ts(base_time, random.randint(1, 10)) if status != "pending" else None,
+                created_at=ts(base_time, random.randint(0, 5)),
+            )
+            db.add(sid)
+            created["sender_ids"] += 1
+
+    await db.flush()
+
+    # ── 5. Create campaigns per candidate ──
+    all_students = (await db.execute(select(StudentDirectory))).scalars().all()
+    all_sender_ids = (await db.execute(select(SenderID))).scalars().all()
+
+    campaign_messages = [
+        ("Vote for Change", "Dear students, your vote is your voice. Let's build a better SRC together. Vote wisely!"),
+        ("Matriculation Ceremony", "All freshers are invited to the matriculation ceremony on Friday at 10am. Venue: Great Hall."),
+        ("Mid-Semester Exams", "Mid-semester exams start next week. Check your department for the schedule."),
+        ("Health Screening", "Free health screening this Saturday at the sports complex. All students are welcome."),
+        ("SRC Week Celebration", "SRC Week is here! Join us for sports, games, and mentorship sessions."),
+    ]
+
+    for cand in all_candidates:
+        cand_senders = [s for s in all_sender_ids if s.candidate_id == cand.id]
+        cand_students = [s for s in all_students if s.institution_id == cand.institution_id]
+
+        for mi, (title, msg) in enumerate(campaign_messages):
+            status = random.choices(["completed", "draft", "failed"], weights=[6, 2, 2])[0]
+            sent_at = ts(base_time, mi * 7 + 5) if status == "completed" else None
+            recipient_count = len(cand_students) if cand_students else 10
+            credits_used = recipient_count if status == "completed" else 0
+
+            campaign = Campaign(
+                candidate_id=cand.id,
+                sender_id_ref=cand_senders[0].id if cand_senders and status != "draft" else None,
+                title=title,
+                message=msg,
+                filters={"gender": "all", "level": "all"} if cand_students else {},
+                recipient_count=recipient_count,
+                credits_used=credits_used,
+                status=status,
+                sent_at=sent_at,
+                created_at=ts(base_time, mi * 7),
+            )
+            db.add(campaign)
+            await db.flush()
+            created["campaigns"] += 1
+
+            if status == "completed" and cand_students:
+                for student in cand_students[:8]:
+                    log_status = random.choices(["delivered", "sent", "failed"], weights=[7, 2, 1])[0]
+                    log = CampaignLog(
+                        campaign_id=campaign.id,
+                        student_id=student.id,
+                        phone=student.phone,
+                        status=log_status,
+                        arkesel_msg_id=None,
+                        error_message="Network error" if log_status == "failed" else None,
+                        sent_at=sent_at,
+                        delivered_at=ts(sent_at, 0, 0, 2) if log_status == "delivered" else None,
+                        created_at=sent_at,
+                    )
+                    db.add(log)
+                    created["logs"] += 1
+
+    await db.flush()
+
+    # ── 6. Seed transactions for all candidates ──
+    campaigns_all = (await db.execute(select(Campaign))).scalars().all()
+    campaign_ids_all = [str(c.id) for c in campaigns_all]
+
+    for candidate in candidates_all:
+        balance = candidate.credits_balance
+        bal = balance
+
+        scenarios = []
+
+        pref1 = make_ref()
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="pending", amount=2000,
+            balance_after=bal, reference=pref1,
+            description="Pending purchase: Bronze (2000 credits)", created_at=ts(base_time, 2),
+        ))
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="completed", amount=2000,
+            balance_after=bal, reference=pref1,
+            description="Completed purchase: Bronze (2000 credits)", created_at=ts(base_time, 2, 12, 5),
+        ))
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="purchase", amount=2000,
+            balance_after=(bal := bal + 2000), reference=make_ref(),
+            description="Credited: Bronze (2000 credits)", created_at=ts(base_time, 2, 12, 10),
+        ))
+
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="deduction", amount=-150,
+            balance_after=(bal := bal - 150), reference=campaign_ids_all[0] if campaign_ids_all else make_ref(),
+            description="Campaign dispatch: 150 SMS units", created_at=ts(base_time, 5),
+        ))
+
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="deduction", amount=-75,
+            balance_after=(bal := bal - 75), reference=campaign_ids_all[1] if len(campaign_ids_all) > 1 else make_ref(),
+            description="Campaign dispatch: 75 SMS units", created_at=ts(base_time, 8),
+        ))
+
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="purchase", amount=75,
+            balance_after=(bal := bal + 75), reference=f"refund-{uuid.uuid4().hex[:8]}",
+            description="Automatic refund: campaign failed to send", created_at=ts(base_time, 9),
+        ))
+
+        pref2 = make_ref()
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="pending", amount=5000,
+            balance_after=bal, reference=pref2,
+            description="Pending purchase: Silver (5000 credits)", created_at=ts(base_time, 12),
+        ))
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="completed", amount=5000,
+            balance_after=bal, reference=pref2,
+            description="Completed purchase: Silver (5000 credits)", created_at=ts(base_time, 12, 12, 5),
+        ))
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="purchase", amount=5000,
+            balance_after=(bal := bal + 5000), reference=make_ref(),
+            description="Credited: Silver (5000 credits)", created_at=ts(base_time, 12, 12, 10),
+        ))
+
+        pref3 = make_ref()
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="pending", amount=10000,
+            balance_after=bal, reference=pref3,
+            description="Pending purchase: Gold (10000 credits)", created_at=ts(base_time, 15),
+        ))
+
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="deduction", amount=-500,
+            balance_after=(bal := bal - 500), reference=campaign_ids_all[2] if len(campaign_ids_all) > 2 else make_ref(),
+            description="Campaign dispatch: 500 SMS units", created_at=ts(base_time, 18),
+        ))
+
+        pref4 = make_ref()
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="pending", amount=500,
+            balance_after=bal, reference=pref4,
+            description="Pending purchase: Starter (500 credits)", created_at=ts(base_time, 22),
+        ))
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="completed", amount=500,
+            balance_after=bal, reference=pref4,
+            description="Completed purchase: Starter (500 credits)", created_at=ts(base_time, 22, 12, 5),
+        ))
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="purchase", amount=500,
+            balance_after=(bal := bal + 500), reference=make_ref(),
+            description="Credited: Starter (500 credits)", created_at=ts(base_time, 22, 12, 10),
+        ))
+
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="purchase", amount=200,
+            balance_after=(bal := bal + 200), reference=f"refund-{uuid.uuid4().hex[:8]}",
+            description="Automatic refund: campaign failed to send", created_at=ts(base_time, 25),
+        ))
+
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="deduction", amount=-2000,
+            balance_after=(bal := bal - 2000), reference=campaign_ids_all[3] if len(campaign_ids_all) > 3 else make_ref(),
+            description="Campaign dispatch: 2000 SMS units", created_at=ts(base_time, 28),
+        ))
+
+        scenarios.append(CreditTransaction(
+            candidate_id=candidate.id, type="purchase", amount=2000,
+            balance_after=(bal := bal + 2000), reference=f"refund-{uuid.uuid4().hex[:8]}",
+            description="Automatic refund: campaign failed to send", created_at=ts(base_time, 29),
+        ))
+
+        for cycle in range(4):
+            for txn in scenarios:
+                repeat = CreditTransaction(
+                    candidate_id=txn.candidate_id,
+                    type=txn.type,
+                    amount=txn.amount,
+                    balance_after=txn.balance_after + cycle * 10000,
+                    reference=f"{txn.reference}-C{cycle}",
+                    description=txn.description,
+                    created_at=txn.created_at + timedelta(days=cycle * 30),
+                )
+                db.add(repeat)
+                created["transactions"] += 1
+
+    await db.commit()
+
+    total = sum(created.values())
+    parts = ", ".join(f"{k}: {v}" for k, v in created.items() if v)
+    return {"message": f"Seeded {total} records — {parts}"}
